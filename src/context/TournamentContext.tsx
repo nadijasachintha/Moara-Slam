@@ -434,25 +434,28 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     let M = 2;
     while (M < N) M *= 2;
 
-    const numByes = M - N;
-
-    // Seeding: Simply separate players from same team
+    // Place byes and players optimally to ensure minimum byes and no bye-bye pairings
     const drawSlots: (Player | null)[] = Array(M).fill(null);
-    let playerIdx = 0;
-    // Uniform bye placement
-    const byeIndices: number[] = [];
-    if (numByes > 0) {
-      const step = M / numByes;
-      for (let i = 0; i < numByes; i++) {
-        byeIndices.push(Math.floor(i * step));
+    const totalMatchesCount = M / 2;
+    const numPlayedMatches = N - totalMatchesCount;
+    const matchTypes: ('played' | 'bye')[] = Array(totalMatchesCount).fill('bye');
+
+    if (numPlayedMatches > 0) {
+      const step = totalMatchesCount / numPlayedMatches;
+      for (let i = 0; i < numPlayedMatches; i++) {
+        const idx = Math.floor(i * step);
+        matchTypes[idx] = 'played';
       }
     }
 
-    for (let i = 0; i < M; i++) {
-      if (byeIndices.includes(i)) {
-        drawSlots[i] = null;
+    let playerIdx = 0;
+    for (let i = 0; i < totalMatchesCount; i++) {
+      if (matchTypes[i] === 'played') {
+        drawSlots[i * 2] = allPlayers[playerIdx++];
+        drawSlots[i * 2 + 1] = allPlayers[playerIdx++];
       } else {
-        drawSlots[i] = allPlayers[playerIdx++];
+        drawSlots[i * 2] = allPlayers[playerIdx++];
+        drawSlots[i * 2 + 1] = null;
       }
     }
 
@@ -476,7 +479,6 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
     const startDayTime = new Date();
     const slotDuration = settings.match_duration_minutes + settings.break_duration_minutes;
-    let createdCount = 0;
 
     for (let rIndex = 0; rIndex < roundsList.length; rIndex++) {
       const roundName = roundsList[rIndex].roundName;
@@ -486,10 +488,6 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       for (let mIndex = 0; mIndex < count; mIndex++) {
         const parentMatchId = rIndex > 0 ? createdMap[`${roundsList[rIndex - 1].roundName}_${Math.floor(mIndex / 2)}`] : null;
         const parentSlot = rIndex > 0 ? (mIndex % 2 === 0 ? 'A' : 'B') : null;
-
-        const table = (createdCount % settings.tables_count) + 1;
-        const slotIdx = Math.floor(createdCount / settings.tables_count);
-        const scheduledTime = new Date(startDayTime.getTime() + (isFirst ? slotIdx : rIndex + 2) * slotDuration * 60 * 1000);
 
         let pA = isFirst ? drawSlots[mIndex * 2] : null;
         let pB = isFirst ? drawSlots[mIndex * 2 + 1] : null;
@@ -501,8 +499,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           player_a_id: pA?.id || null,
           player_b_id: pB?.id || null,
           winner_id: null,
-          table_number: table,
-          scheduled_time: scheduledTime.toISOString(),
+          table_number: 0, // placeholder
+          scheduled_time: startDayTime.toISOString(), // placeholder
           status: 'scheduled',
           score_a: 0,
           score_b: 0,
@@ -523,19 +521,20 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
         localMatchesList.push(newMatch);
         createdMap[`${roundName}_${mIndex}`] = matchId;
-        createdCount++;
       }
     }
 
-    // Auto resolve byes
+    // Auto resolve byes in memory first
     localMatchesList.forEach(m => {
-      if (m.stage_index === roundsList.length && (m.player_a_id === null || m.player_b_id === null)) {
+      const isFirst = m.stage_index === roundsList.length;
+      if (isFirst && (m.player_a_id === null || m.player_b_id === null)) {
         const winnerId = m.player_a_id || m.player_b_id;
         if (winnerId) {
           m.status = 'finished';
           m.winner_id = winnerId;
-          m.score_a = m.player_a_id ? 8 : 0;
-          m.score_b = m.player_b_id ? 8 : 0;
+          m.score_a = 0;
+          m.score_b = 0;
+          m.table_number = 0; // Bye match has no table
 
           // Propagate
           if (m.next_match_id && m.next_match_player_slot) {
@@ -555,9 +554,65 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       }
     });
 
+    // Compute dependency minSlots for every match
+    const minSlotMap: { [matchId: string]: number } = {};
+
+    for (let rIndex = roundsList.length - 1; rIndex >= 0; rIndex--) {
+      const roundName = roundsList[rIndex].roundName;
+      const count = roundsList[rIndex].matchesCount;
+      const isFirst = rIndex === roundsList.length - 1;
+
+      for (let mIndex = 0; mIndex < count; mIndex++) {
+        const matchObj = localMatchesList.find(m => m.round === roundName && (createdMap[`${roundName}_${mIndex}`] === m.id));
+        const matchId = matchObj!.id;
+
+        if (isFirst) {
+          if (matchObj!.player_a_id === null || matchObj!.player_b_id === null) {
+            minSlotMap[matchId] = -1; // bye match
+          } else {
+            minSlotMap[matchId] = 0; // played match in slot 0
+          }
+        } else {
+          const childA = localMatchesList.find(c => c.next_match_id === matchId && c.next_match_player_slot === 'A');
+          const childB = localMatchesList.find(c => c.next_match_id === matchId && c.next_match_player_slot === 'B');
+
+          const slotA = childA ? minSlotMap[childA.id] : -1;
+          const slotB = childB ? minSlotMap[childB.id] : -1;
+
+          minSlotMap[matchId] = Math.max(slotA, slotB) + 1;
+        }
+      }
+    }
+
+    // Schedule played matches dynamically using greedy scheduler
+    const playedMatches = localMatchesList.filter(m => minSlotMap[m.id] >= 0);
+    playedMatches.sort((a, b) => minSlotMap[a.id] - minSlotMap[b.id]);
+
+    let currentSlot = 0;
+    let unscheduled = [...playedMatches];
+
+    while (unscheduled.length > 0) {
+      const ready = unscheduled.filter(m => minSlotMap[m.id] <= currentSlot);
+
+      if (ready.length === 0) {
+        currentSlot++;
+        continue;
+      }
+
+      const toSchedule = ready.slice(0, settings.tables_count);
+
+      toSchedule.forEach((m, idx) => {
+        m.table_number = idx + 1;
+        m.scheduled_time = new Date(startDayTime.getTime() + currentSlot * slotDuration * 60 * 1000).toISOString();
+        unscheduled = unscheduled.filter(u => u.id !== m.id);
+      });
+
+      currentSlot++;
+    }
+
     setMatches(localMatchesList);
     saveDemoState('matches', localMatchesList);
-    addDemoAudit('GENERATE_SCHEDULE', { matchesGenerated: createdCount });
+    addDemoAudit('GENERATE_SCHEDULE', { matchesGenerated: playedMatches.length });
   };
 
   const startM = async (matchId: string) => {
