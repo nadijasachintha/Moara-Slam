@@ -8,12 +8,12 @@ import {
   Play, 
   Pause, 
   Check, 
-  Trophy, 
   Plus, 
   Minus, 
-  ChevronDown, 
-  ChevronUp, 
-  Tv
+  Tv,
+  Settings,
+  Trophy,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,7 +21,7 @@ export default function LiveScoresTab() {
   const { 
     matches, 
     isAdmin, 
-    startM, 
+    startM,
     pauseM, 
     resumeM, 
     updateScore, 
@@ -37,7 +37,6 @@ export default function LiveScoresTab() {
     setConfirmWinnerId(null);
   };
 
-  // Timer actions
   const handleStart = async (matchId: string) => {
     try {
       await startM(matchId);
@@ -62,7 +61,6 @@ export default function LiveScoresTab() {
     }
   };
 
-  // Score edits
   const adjustScore = async (match: Match, side: 'A' | 'B', amount: number) => {
     let newScoreA = match.score_a;
     let newScoreB = match.score_b;
@@ -89,7 +87,6 @@ export default function LiveScoresTab() {
     }
   };
 
-  // Confirm match result
   const handleConfirmResult = async (matchId: string) => {
     if (!confirmWinnerId) {
       alert('Please select a winner before confirming.');
@@ -106,16 +103,128 @@ export default function LiveScoresTab() {
     }
   };
 
-  const liveMatches = matches.filter((m) => m.status === 'live');
-  const upcomingMatches = matches.filter((m) => m.status === 'scheduled');
-  const finishedMatches = matches.filter((m) => m.status === 'finished');
+  // Compile exact list of 15 tables
+  const tableNumbers = Array.from({ length: 15 }, (_, i) => i + 1);
 
-  const renderMatchCard = (match: Match) => {
-    const isExpanded = expandedMatchId === match.id;
+  const cards = tableNumbers.map((tableNum) => {
+    const tableMatches = matches.filter(m => m.table_number === tableNum);
+    const liveMatch = tableMatches.find(m => m.status === 'live');
+    const scheduledMatches = tableMatches
+      .filter(m => m.status === 'scheduled')
+      .sort((a, b) => new Date(a.scheduled_time).getTime() - new Date(b.scheduled_time).getTime());
+    const finishedMatches = tableMatches
+      .filter(m => m.status === 'finished')
+      .sort((a, b) => new Date(b.scheduled_time).getTime() - new Date(a.scheduled_time).getTime());
+
+    let match: Match | null = null;
+    let state: 'live' | 'upcoming' | 'completed' | 'idle' = 'idle';
+
+    if (liveMatch) {
+      match = liveMatch;
+      state = 'live';
+    } else if (scheduledMatches.length > 0) {
+      match = scheduledMatches[0];
+      state = 'upcoming';
+    } else if (finishedMatches.length > 0) {
+      match = finishedMatches[0];
+      state = 'completed';
+    }
+
+    return { tableNum, match, state };
+  });
+
+  const activeLiveCount = cards.filter(c => c.state === 'live').length;
+
+  // Render Functions for the 4 card states
+  const renderIdleScoreCard = (tableNum: number) => {
+    return (
+      <div 
+        key={tableNum}
+        className="relative overflow-hidden bg-slate-900/10 border border-dashed border-white/5 rounded-2xl p-4 flex flex-col justify-between h-40 items-center justify-center space-y-2 opacity-50"
+      >
+        <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-400">
+          Table {tableNum}
+        </span>
+        <div className="space-y-1 text-center">
+          <h4 className="font-extrabold text-slate-500 text-sm">Table Idle</h4>
+          <p className="text-[9px] text-slate-600 uppercase tracking-wider">No Match Assigned</p>
+        </div>
+      </div>
+    );
+  };
+
+  const renderUpcomingScoreCard = (match: Match, tableNum: number) => {
     const playerA = match.player_a;
     const playerB = match.player_b;
+    const nameA = playerA ? playerA.full_name : 'TBD';
+    const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    const nameB = playerB ? playerB.full_name : 'TBD';
+    const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
+    const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
-    // Handle byes or empty slots
+    return (
+      <div 
+        key={tableNum} 
+        className="relative overflow-hidden bg-gradient-to-br from-[#1c160a] to-[#241b0b] border border-amber-500/15 rounded-2xl shadow-lg p-4 flex flex-col justify-between h-40 space-y-2 transition-all duration-300"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
+              Table {tableNum}
+            </span>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
+              Scheduled
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+            <Clock className="w-3 h-3 text-amber-400" />
+            {timeStr}
+          </span>
+        </div>
+
+        {/* Central Matchup */}
+        <div className="flex items-center justify-between gap-2 py-0.5">
+          <div className="flex-1 text-center min-w-0">
+            <h4 className="font-extrabold text-white text-xs truncate leading-tight">{nameA}</h4>
+            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
+          </div>
+
+          <div className="flex flex-col items-center justify-center px-2 shrink-0">
+            <span className="text-[9px] font-extrabold bg-amber-500/10 border border-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full uppercase tracking-widest leading-none">
+              VS
+            </span>
+          </div>
+
+          <div className="flex-1 text-center min-w-0">
+            <h4 className="font-extrabold text-white text-xs truncate leading-tight">{nameB}</h4>
+            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between pt-1.5 border-t border-white/5">
+          <span className="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest truncate max-w-[80px]">
+            {match.round.replace('_', ' ')}
+          </span>
+
+          {isAdmin && (
+            <button
+              onClick={() => handleStart(match.id)}
+              className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all shadow-md"
+            >
+              <Play className="w-3 h-3 fill-slate-950" /> Start
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const renderCompletedScoreCard = (match: Match, tableNum: number) => {
+    const playerA = match.player_a;
+    const playerB = match.player_b;
+    const winner = match.winner;
     const nameA = playerA ? playerA.full_name : 'TBD';
     const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
     const nameB = playerB ? playerB.full_name : 'TBD';
@@ -123,274 +232,285 @@ export default function LiveScoresTab() {
 
     return (
       <div 
-        key={match.id} 
-        className={`glass-panel rounded-2xl overflow-hidden transition-all duration-300 border ${
-          match.status === 'live' 
-            ? 'border-emerald-500/20 shadow-[0_0_20px_rgba(16,185,129,0.05)]' 
-            : 'border-white/5'
-        }`}
+        key={tableNum} 
+        className="relative overflow-hidden bg-gradient-to-br from-[#0b130e] to-[#0c1811] border border-white/5 rounded-2xl shadow-lg p-4 flex flex-col justify-between h-40 space-y-2 transition-all duration-300"
       >
-        {/* Collapsed Header */}
-        <div 
-          onClick={() => toggleExpand(match.id)}
-          className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-all select-none"
-        >
-          <div className="flex-1 space-y-1.5">
-            {/* Table and Badge */}
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
-                Table {match.table_number}
-              </span>
-              {match.status === 'live' && (
-                <span className="text-[9px] font-extrabold uppercase tracking-widest bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
-                  <span className="w-1.5 h-1.5 bg-slate-950 rounded-full"></span>
-                  Live
-                </span>
-              )}
-              {match.status === 'finished' && (
-                <span className="text-[9px] font-bold uppercase tracking-widest bg-white/10 text-slate-400 px-2 py-0.5 rounded-full">
-                  Completed
-                </span>
-              )}
-            </div>
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
+              Table {tableNum}
+            </span>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest bg-white/10 text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Trophy className="w-2.5 h-2.5 text-[#f5a623]" />
+              Completed
+            </span>
+          </div>
+          <span className="text-[9px] font-bold text-slate-500 font-mono">
+            {match.total_duration_minutes}m limits
+          </span>
+        </div>
 
-            {/* Matchup */}
-            <div className="flex items-center justify-between pr-4">
-              <div className="flex flex-col">
-                <span className="text-sm font-semibold text-white">{nameA}</span>
-                <span className="text-[10px] text-slate-400 truncate max-w-[120px]">{uniA}</span>
-              </div>
-              
-              <div className="flex flex-col items-center justify-center px-3">
-                <span className="text-xs font-bold text-slate-500">VS</span>
-                <span className="text-base font-extrabold text-[#22c55e] tracking-wider mt-0.5">
-                  {match.score_a} - {match.score_b}
-                </span>
-              </div>
-
-              <div className="flex flex-col items-end">
-                <span className="text-sm font-semibold text-white">{nameB}</span>
-                <span className="text-[10px] text-slate-400 truncate max-w-[120px]">{uniB}</span>
-              </div>
-            </div>
+        {/* Display */}
+        <div className="flex items-center justify-between gap-2 py-0.5">
+          {/* Player A */}
+          <div className="flex-1 text-center min-w-0">
+            <h4 className={`font-extrabold text-xs truncate leading-tight ${
+              winner?.id === playerA?.id ? 'text-[#22c55e]' : 'text-slate-400'
+            }`}>
+              {nameA}
+              {winner?.id === playerA?.id && ' 🏆'}
+            </h4>
+            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
           </div>
 
-          <div className="flex items-center gap-2.5 ml-2">
-            <MatchTimer match={match} />
-            {isExpanded ? (
-              <ChevronUp className="w-4 h-4 text-slate-400" />
-            ) : (
-              <ChevronDown className="w-4 h-4 text-slate-400" />
-            )}
+          {/* Centered Scores */}
+          <div className="flex flex-col items-center justify-center px-2 shrink-0">
+            <span className="text-base font-black text-white tracking-widest bg-slate-950/60 px-2.5 py-1 rounded-lg border border-white/5 leading-none">
+              {match.score_a} - {match.score_b}
+            </span>
+            <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-1 leading-none">
+              {match.current_frame} frames
+            </span>
+          </div>
+
+          {/* Player B */}
+          <div className="flex-1 text-center min-w-0">
+            <h4 className={`font-extrabold text-xs truncate leading-tight ${
+              winner?.id === playerB?.id ? 'text-[#22c55e]' : 'text-slate-400'
+            }`}>
+              {nameB}
+              {winner?.id === playerB?.id && ' 🏆'}
+            </h4>
+            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
           </div>
         </div>
 
-        {/* Expanded Details */}
+        {/* Card Footer */}
+        <div className="flex items-center justify-between pt-1.5 border-t border-white/5">
+          <span className="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest truncate max-w-[80px]">
+            {match.round.replace('_', ' ')}
+          </span>
+          <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">
+            Awaiting next
+          </span>
+        </div>
+      </div>
+    );
+  };
+
+  const renderLiveScoreCard = (match: Match, tableNum: number) => {
+    const isExpanded = expandedMatchId === match.id;
+    const playerA = match.player_a;
+    const playerB = match.player_b;
+
+    const nameA = playerA ? playerA.full_name : 'TBD';
+    const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    const nameB = playerB ? playerB.full_name : 'TBD';
+    const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
+
+    return (
+      <div 
+        key={tableNum} 
+        className="relative overflow-hidden bg-gradient-to-br from-[#0c1f0f] to-[#0f2d17] border border-[#22c55e]/15 rounded-2xl shadow-xl shadow-[#22c55e]/5 p-4 flex flex-col justify-between space-y-4 transition-all duration-300"
+      >
+        {/* Card Header (Table & Pulse Indicator) */}
+        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
+              Table {tableNum}
+            </span>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+              <span className="w-1 h-1 bg-slate-950 rounded-full"></span>
+              Live
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-300">
+            <MatchTimer match={match} />
+          </div>
+        </div>
+
+        {/* Central Matchup scores (Large Display) */}
+        <div className="flex items-center justify-between gap-2 py-1">
+          {/* Player A */}
+          <div className="flex-1 text-center min-w-0">
+            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameA}</h4>
+            <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
+          </div>
+
+          {/* Central Score Digits */}
+          <div className="flex flex-col items-center justify-center px-3 shrink-0">
+            <span className="text-2xl font-black text-white tracking-widest bg-slate-950/60 px-3 py-1 rounded-xl border border-white/5 leading-none">
+              {match.score_a} - {match.score_b}
+            </span>
+            <span className="text-[9px] text-[#f5a623] font-bold uppercase tracking-wider mt-1.5 leading-none">
+              Frame {match.current_frame} / 8
+            </span>
+          </div>
+
+          {/* Player B */}
+          <div className="flex-1 text-center min-w-0">
+            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameB}</h4>
+            <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
+          </div>
+        </div>
+
+        {/* Card Footer (Round Details & Admin settings trigger) */}
+        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+            {match.round.replace('_', ' ')}
+          </span>
+
+          {isAdmin && (
+            <button
+              onClick={() => toggleExpand(match.id)}
+              className={`px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border transition-all flex items-center gap-1 ${
+                isExpanded 
+                  ? 'bg-[#22c55e] border-transparent text-slate-950'
+                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+              }`}
+            >
+              <Settings className="w-3 h-3" />
+              {isExpanded ? 'Close Controls' : 'Referee'}
+            </button>
+          )}
+        </div>
+
+        {/* Expanded Referee Live Controls */}
         <AnimatePresence>
-          {isExpanded && (
+          {isExpanded && isAdmin && (
             <motion.div
               initial={{ height: 0, opacity: 0 }}
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="border-t border-white/5 bg-slate-950/20"
+              className="pt-3 border-t border-white/5 space-y-3.5"
             >
-              <div className="p-5 space-y-5">
-                {/* Visual score display */}
-                <div className="flex justify-around items-center py-4 bg-white/5 rounded-xl border border-white/5">
-                  <div className="text-center">
-                    <span className="text-[10px] text-[#22c55e] font-extrabold uppercase tracking-widest block mb-1">
-                      Player A
-                    </span>
-                    <span className="text-xl font-bold text-white block leading-none">{nameA}</span>
-                    <span className="text-[10px] text-slate-400 block mt-1">{uniA}</span>
-                    <span className="text-4xl font-black text-white mt-3 block">{match.score_a}</span>
-                  </div>
+              {/* Timer Control */}
+              <div className="flex gap-2">
+                {!match.is_paused ? (
+                  <button
+                    onClick={() => handlePause(match.id)}
+                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-extrabold py-2 rounded-xl flex items-center justify-center gap-1"
+                  >
+                    <Pause className="w-3.5 h-3.5 fill-slate-950" /> Pause Timer
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => handleResume(match.id)}
+                    className="flex-1 bg-[#22c55e] hover:bg-[#22c55e]/90 text-slate-950 text-[10px] font-extrabold py-2 rounded-xl flex items-center justify-center gap-1"
+                  >
+                    <Play className="w-3.5 h-3.5 fill-slate-950" /> Resume Timer
+                  </button>
+                )}
+              </div>
 
-                  <div className="text-center px-4 border-x border-white/5">
-                    <span className="text-[10px] text-slate-500 font-extrabold uppercase tracking-widest block mb-1">
-                      Frame
-                    </span>
-                    <span className="text-2xl font-black text-[#16a34a] block">{match.current_frame} / 8</span>
-                    <span className="text-[9px] text-slate-400 block mt-1">45m Limit</span>
-                  </div>
-
-                  <div className="text-center">
-                    <span className="text-[10px] text-[#22c55e] font-extrabold uppercase tracking-widest block mb-1">
-                      Player B
-                    </span>
-                    <span className="text-xl font-bold text-white block leading-none">{nameB}</span>
-                    <span className="text-[10px] text-slate-400 block mt-1">{uniB}</span>
-                    <span className="text-4xl font-black text-white mt-3 block">{match.score_b}</span>
-                  </div>
-                </div>
-
-                {/* Additional Match Metadata */}
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-center">
-                    <span className="text-slate-400 font-medium">Table Assign</span>
-                    <span className="text-sm font-bold text-white mt-0.5">Table {match.table_number}</span>
-                  </div>
-                  <div className="bg-white/5 p-3 rounded-xl border border-white/5 flex flex-col justify-center">
-                    <span className="text-slate-400 font-medium">Scheduled Time</span>
-                    <span className="text-sm font-bold text-white mt-0.5">
-                      {new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+              {/* Increments / Decrements Grid */}
+              <div className="grid grid-cols-2 gap-2">
+                {/* P1 Controls */}
+                <div className="bg-slate-950/40 p-2 rounded-xl border border-white/5 flex flex-col items-center">
+                  <span className="text-[9px] text-slate-400 font-bold block mb-1 leading-none">P1 Points</span>
+                  <div className="flex items-center gap-2.5">
+                    <button 
+                      onClick={() => adjustScore(match, 'A', -1)}
+                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
+                    >
+                      -
+                    </button>
+                    <span className="text-xs font-black text-white min-w-[14px] text-center">{match.score_a}</span>
+                    <button 
+                      onClick={() => adjustScore(match, 'A', 1)}
+                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
-                {/* ADMIN CONTROLS INTERFACE */}
-                {isAdmin && (
-                  <div className="bg-[#22c55e]/5 border border-[#22c55e]/10 p-4 rounded-xl space-y-4">
-                    <div className="flex items-center gap-1.5 text-xs font-bold text-[#22c55e]">
-                      <Tv className="w-3.5 h-3.5" />
-                      ADMIN LIVE CONTROLS
-                    </div>
-
-                    {/* Start / Pause / Resume controls */}
-                    <div className="flex gap-2">
-                      {match.status === 'scheduled' && (
-                        <button
-                          onClick={() => handleStart(match.id)}
-                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-extrabold py-2.5 rounded-xl flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-slate-950" /> Start Match
-                        </button>
-                      )}
-
-                      {match.status === 'live' && !match.is_paused && (
-                        <button
-                          onClick={() => handlePause(match.id)}
-                          className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-xs font-extrabold py-2.5 rounded-xl flex items-center justify-center gap-1.5"
-                        >
-                          <Pause className="w-3.5 h-3.5 fill-slate-950" /> Pause Timer
-                        </button>
-                      )}
-
-                      {match.status === 'live' && match.is_paused && (
-                        <button
-                          onClick={() => handleResume(match.id)}
-                          className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-slate-950 text-xs font-extrabold py-2.5 rounded-xl flex items-center justify-center gap-1.5"
-                        >
-                          <Play className="w-3.5 h-3.5 fill-slate-950" /> Resume Timer
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Score adjustments and frame controls */}
-                    {match.status === 'live' && (
-                      <div className="space-y-3.5 pt-2 border-t border-[#22c55e]/10">
-                        {/* Adjust Scores */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-300">Adjust Scores:</span>
-                          
-                          <div className="flex items-center gap-4">
-                            {/* Player A Score Controls */}
-                            <div className="flex items-center gap-1 bg-white/5 rounded-lg border border-white/10 p-0.5">
-                              <button 
-                                onClick={() => adjustScore(match, 'A', -1)}
-                                className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <span className="w-8 text-center text-xs font-bold text-white">P1</span>
-                              <button 
-                                onClick={() => adjustScore(match, 'A', 1)}
-                                className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                            </div>
-
-                            {/* Player B Score Controls */}
-                            <div className="flex items-center gap-1 bg-white/5 rounded-lg border border-white/10 p-0.5">
-                              <button 
-                                onClick={() => adjustScore(match, 'B', -1)}
-                                className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"
-                              >
-                                <Minus className="w-3 h-3" />
-                              </button>
-                              <span className="w-8 text-center text-xs font-bold text-white">P2</span>
-                              <button 
-                                onClick={() => adjustScore(match, 'B', 1)}
-                                className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Adjust Frame */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs font-semibold text-slate-300">Current Frame:</span>
-                          <div className="flex items-center gap-1.5 bg-white/5 rounded-lg border border-white/10 p-0.5">
-                            <button 
-                              onClick={() => adjustFrame(match, -1)}
-                              className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"
-                            >
-                              <Minus className="w-3 h-3" />
-                            </button>
-                            <span className="w-8 text-center text-xs font-bold text-white">{match.current_frame}</span>
-                            <button 
-                              onClick={() => adjustFrame(match, 1)}
-                              className="w-7 h-7 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white"
-                            >
-                              <Plus className="w-3 h-3" />
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Result Confirmation */}
-                    {(match.status === 'live' || match.status === 'scheduled') && (
-                      <div className="pt-3 border-t border-[#22c55e]/10 space-y-3">
-                        <span className="block text-xs font-semibold text-slate-300">Confirm Final Match Winner:</span>
-                        
-                        <div className="grid grid-cols-2 gap-2">
-                          <button
-                            onClick={() => setConfirmWinnerId(match.player_a_id)}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                              confirmWinnerId === match.player_a_id
-                                ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
-                                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                            }`}
-                          >
-                            {nameA}
-                          </button>
-                          
-                          <button
-                            onClick={() => setConfirmWinnerId(match.player_b_id)}
-                            className={`px-3 py-2 rounded-xl text-xs font-bold border transition-all ${
-                              confirmWinnerId === match.player_b_id
-                                ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
-                                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                            }`}
-                          >
-                            {nameB}
-                          </button>
-                        </div>
-
-                        {confirmWinnerId && (
-                          <div className="flex gap-2 pt-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                            <button
-                              onClick={() => handleConfirmResult(match.id)}
-                              disabled={submittingResult}
-                              className="flex-1 bg-amber-400 hover:bg-amber-500 text-slate-950 font-extrabold py-2.5 rounded-xl text-xs flex items-center justify-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.2)]"
-                            >
-                              {submittingResult ? (
-                                <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-                              ) : (
-                                <Check className="w-3.5 h-3.5 stroke-[3]" />
-                              )}
-                              Confirm Winner & Proceed
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                {/* P2 Controls */}
+                <div className="bg-slate-950/40 p-2 rounded-xl border border-white/5 flex flex-col items-center">
+                  <span className="text-[9px] text-slate-400 font-bold block mb-1 leading-none">P2 Points</span>
+                  <div className="flex items-center gap-2.5">
+                    <button 
+                      onClick={() => adjustScore(match, 'B', -1)}
+                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
+                    >
+                      -
+                    </button>
+                    <span className="text-xs font-black text-white min-w-[14px] text-center">{match.score_b}</span>
+                    <button 
+                      onClick={() => adjustScore(match, 'B', 1)}
+                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
+                    >
+                      +
+                    </button>
                   </div>
+                </div>
+              </div>
+
+              {/* Adjust Frame */}
+              <div className="flex items-center justify-between bg-slate-950/40 p-2 rounded-xl border border-white/5">
+                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider pl-1">Frame</span>
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => adjustFrame(match, -1)}
+                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
+                  >
+                    -
+                  </button>
+                  <span className="text-xs font-black text-white min-w-[16px] text-center">{match.current_frame}</span>
+                  <button 
+                    onClick={() => adjustFrame(match, 1)}
+                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {/* Winner Selection & Finish Match */}
+              <div className="pt-2 border-t border-white/5 space-y-2">
+                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                  Confirm Match Result:
+                </span>
+                
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    onClick={() => setConfirmWinnerId(match.player_a_id)}
+                    className={`px-2 py-1.5 rounded-lg text-[9px] font-bold border truncate transition-all ${
+                      confirmWinnerId === match.player_a_id
+                        ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
+                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {nameA}
+                  </button>
+                  
+                  <button
+                    onClick={() => setConfirmWinnerId(match.player_b_id)}
+                    className={`px-2 py-1.5 rounded-lg text-[9px] font-bold border truncate transition-all ${
+                      confirmWinnerId === match.player_b_id
+                        ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
+                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+                    }`}
+                  >
+                    {nameB}
+                  </button>
+                </div>
+
+                {confirmWinnerId && (
+                  <button
+                    onClick={() => handleConfirmResult(match.id)}
+                    disabled={submittingResult}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-2 rounded-xl text-[10px] flex items-center justify-center gap-1 shadow-md mt-1 animate-in fade-in slide-in-from-bottom-2 duration-150"
+                  >
+                    {submittingResult ? (
+                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+                    ) : (
+                      <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    )}
+                    Confirm Winner
+                  </button>
                 )}
               </div>
             </motion.div>
@@ -416,60 +536,29 @@ export default function LiveScoresTab() {
         </div>
       </div>
 
-      {/* SECTION 1: LIVE SCORES */}
-      <section className="space-y-3">
-        <div className="flex items-center gap-2 px-1">
-          <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
-          <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-200">
-            Live Matches ({liveMatches.length})
-          </h3>
+      {/* LIVE SCORES SCORE CARD GRID */}
+      <section className="space-y-3.5">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 bg-emerald-500 rounded-full animate-ping"></span>
+            <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-200">
+              Active Live Boards ({activeLiveCount} Live)
+            </h3>
+          </div>
+          <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
+            15 Hall Tables
+          </span>
         </div>
 
-        {liveMatches.length > 0 ? (
-          <div className="space-y-3">
-            {liveMatches.map(renderMatchCard)}
-          </div>
-        ) : (
-          <div className="glass-panel border-dashed border-white/10 rounded-2xl p-6 text-center text-slate-500 text-xs">
-            No matches are currently active. Admins can start scheduled matches in the Schedule tab.
-          </div>
-        )}
-      </section>
-
-      {/* SECTION 2: UPCOMING MATCHES */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-200 px-1">
-          Upcoming Schedule ({upcomingMatches.length})
-        </h3>
-
-        {upcomingMatches.length > 0 ? (
-          <div className="space-y-3">
-            {upcomingMatches.map(renderMatchCard)}
-          </div>
-        ) : (
-          <div className="glass-panel border-dashed border-white/10 rounded-2xl p-6 text-center text-slate-500 text-xs">
-            No upcoming matches scheduled.
-          </div>
-        )}
-      </section>
-
-      {/* SECTION 3: FINISHED MATCHES */}
-      <section className="space-y-3">
-        <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-200 px-1">
-          Finished Matches ({finishedMatches.length})
-        </h3>
-
-        {finishedMatches.length > 0 ? (
-          <div className="space-y-3">
-            {finishedMatches.map(renderMatchCard)}
-          </div>
-        ) : (
-          <div className="glass-panel border-dashed border-white/10 rounded-2xl p-6 text-center text-slate-500 text-xs">
-            No matches have finished yet.
-          </div>
-        )}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {cards.map(({ tableNum, match, state }) => {
+            if (state === 'live') return renderLiveScoreCard(match!, tableNum);
+            if (state === 'upcoming') return renderUpcomingScoreCard(match!, tableNum);
+            if (state === 'completed') return renderCompletedScoreCard(match!, tableNum);
+            return renderIdleScoreCard(tableNum);
+          })}
+        </div>
       </section>
     </div>
   );
 }
-
