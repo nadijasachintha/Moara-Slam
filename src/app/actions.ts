@@ -3,6 +3,7 @@
 import { supabase, getSupabaseAdmin } from '@/lib/supabase';
 import { Match, Player, Registration, Team, TournamentSettings, University } from '@/types/database.types';
 import { Resend } from 'resend';
+import crypto from 'crypto';
 
 const resend = new Resend(process.env.RESEND_API_KEY || 're_placeholder_key');
 
@@ -143,7 +144,7 @@ export async function submitRegistration(payload: {
 
   if (regError) throw new Error(regError.message);
 
-  // Send Confirmation Email if directly approved by Admin
+  // Send Confirmation Email
   if (isAdminSubmitting) {
     try {
       const apiKey = process.env.RESEND_API_KEY;
@@ -182,6 +183,45 @@ export async function submitRegistration(payload: {
       }
     } catch (emailError) {
       console.error("Failed to send direct registration confirmation email:", emailError);
+    }
+  } else {
+    try {
+      const apiKey = process.env.RESEND_API_KEY;
+      if (apiKey && !apiKey.includes('placeholder')) {
+        await resend.emails.send({
+          from: 'Mora Slams <onboarding@resend.dev>',
+          to: [payload.leaderEmail],
+          subject: 'Registration Received - Mora Slams 2026',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
+              <div style="text-align: center; border-bottom: 1px solid rgba(245, 166, 35, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
+                <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
+                <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
+              </div>
+              
+              <h2 style="color: #f5a623; font-size: 18px; margin-top: 0;">Registration Received!</h2>
+              <p style="font-size: 14px; color: #cbd5e1;">Hi <strong>${payload.leaderName}</strong>,</p>
+              <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
+                We have successfully received your team registration for <strong>${payload.teamName}</strong> from <strong>${universityName}</strong>.
+              </p>
+              <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
+                Your entry is currently <strong>pending approval</strong> by tournament administrators. Once the administrators verify your credentials and approve the registration, you will receive another confirmation email with your bracket slot details.
+              </p>
+
+              <div style="background-color: rgba(245, 166, 35, 0.05); border: 1px solid rgba(245, 166, 35, 0.15); border-radius: 8px; padding: 12px; font-size: 12px; color: #f5a623; text-align: center; margin-top: 20px;">
+                <strong>Status: Pending Verification</strong>
+              </div>
+
+              <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
+              <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
+                This is an automated notification from the Mora Slams Tournament Management System.
+              </p>
+            </div>
+          `,
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send pending registration email:", emailError);
     }
   }
 
@@ -413,22 +453,27 @@ export async function generateScheduleAndBrackets(adminEmail: string) {
     }
   }
 
-  // Place byes (nulls) uniformly in the slots
-  let byeIndices: number[] = [];
-  if (numByes > 0) {
-    const step = M / numByes;
-    for (let i = 0; i < numByes; i++) {
+  // Place byes and players optimally to ensure minimum byes and no bye-bye pairings
+  const totalMatchesCount = M / 2;
+  const numPlayedMatches = N - totalMatchesCount;
+  const matchTypes: ('played' | 'bye')[] = Array(totalMatchesCount).fill('bye');
+
+  if (numPlayedMatches > 0) {
+    const step = totalMatchesCount / numPlayedMatches;
+    for (let i = 0; i < numPlayedMatches; i++) {
       const idx = Math.floor(i * step);
-      byeIndices.push(idx);
+      matchTypes[idx] = 'played';
     }
   }
 
   let playerIdx = 0;
-  for (let i = 0; i < M; i++) {
-    if (byeIndices.includes(i)) {
-      drawSlots[i] = null;
+  for (let i = 0; i < totalMatchesCount; i++) {
+    if (matchTypes[i] === 'played') {
+      drawSlots[i * 2] = flatSortedPlayers[playerIdx++];
+      drawSlots[i * 2 + 1] = flatSortedPlayers[playerIdx++];
     } else {
-      drawSlots[i] = flatSortedPlayers[playerIdx++];
+      drawSlots[i * 2] = flatSortedPlayers[playerIdx++];
+      drawSlots[i * 2 + 1] = null;
     }
   }
 
@@ -450,26 +495,25 @@ export async function generateScheduleAndBrackets(adminEmail: string) {
     tempM /= 2;
   }
 
-  // Map of next_round_match index to created Match UUID
-  // key: "roundName_matchIndex"
-  const createdMatchesMap: { [key: string]: string } = {};
-
   // Initialize start schedules
   const startDayTime = new Date();
   const [startHour, startMin] = settings.start_time.split(':').map(Number);
   startDayTime.setHours(startHour, startMin, 0, 0);
-
   const slotDurationMinutes = settings.match_duration_minutes + settings.break_duration_minutes;
-  let matchesCreatedCount = 0;
 
-  // Loop through rounds from final down to first round
+  // Generate match structures in memory first
+  const memoryMatches: any[] = [];
+  const createdMatchesMap: { [key: string]: string } = {};
+
   for (let rIndex = 0; rIndex < roundsList.length; rIndex++) {
     const roundName = roundsList[rIndex].roundName;
     const matchesCount = roundsList[rIndex].matchesCount;
     const isFirstRound = rIndex === roundsList.length - 1;
 
     for (let mIndex = 0; mIndex < matchesCount; mIndex++) {
-      // Find parent match
+      const matchId = crypto.randomUUID();
+      createdMatchesMap[`${roundName}_${mIndex}`] = matchId;
+
       let parentMatchId: string | null = null;
       let parentSlot: 'A' | 'B' | null = null;
 
@@ -480,89 +524,143 @@ export async function generateScheduleAndBrackets(adminEmail: string) {
         parentSlot = mIndex % 2 === 0 ? 'A' : 'B';
       }
 
-      // Schedule calculations (Only for first round initially, others are placeholders or TBD)
-      let tableNumber = 1;
-      let scheduledTime = new Date(startDayTime.getTime());
-
-      if (isFirstRound) {
-        // Table distribution
-        const tableIdx = matchesCreatedCount % settings.tables_count;
-        const slotIdx = Math.floor(matchesCreatedCount / settings.tables_count);
-        tableNumber = tableIdx + 1;
-        scheduledTime = new Date(startDayTime.getTime() + slotIdx * slotDurationMinutes * 60 * 1000);
-        matchesCreatedCount++;
-      } else {
-        // Later rounds scheduled sequentially after first round slots
-        const firstRoundTotalSlots = Math.ceil(roundsList[roundsList.length - 1].matchesCount / settings.tables_count);
-        const roundOffsetSlots = firstRoundTotalSlots + (rIndex - 0); // approx later slots
-        const tableIdx = mIndex % settings.tables_count;
-        tableNumber = tableIdx + 1;
-        scheduledTime = new Date(startDayTime.getTime() + roundOffsetSlots * slotDurationMinutes * 60 * 1000);
-      }
-
       let playerAId: string | null = null;
       let playerBId: string | null = null;
 
       if (isFirstRound) {
-        // Pull players from draw slots
         playerAId = drawSlots[mIndex * 2]?.id || null;
         playerBId = drawSlots[mIndex * 2 + 1]?.id || null;
       }
 
-      // Insert match
-      const { data: match, error: matchInsertError } = await adminClient
-        .from('matches')
-        .insert({
-          player_a_id: playerAId,
-          player_b_id: playerBId,
-          winner_id: null,
-          table_number: tableNumber,
-          scheduled_time: scheduledTime.toISOString(),
-          status: 'scheduled',
-          score_a: 0,
-          score_b: 0,
-          current_frame: 1,
-          round: roundName,
-          stage_index: rIndex + 1,
-          next_match_id: parentMatchId,
-          next_match_player_slot: parentSlot,
-          total_duration_minutes: settings.match_duration_minutes,
-        })
-        .select()
-        .single();
+      memoryMatches.push({
+        id: matchId,
+        round: roundName,
+        stage_index: rIndex + 1,
+        mIndex: mIndex,
+        player_a_id: playerAId,
+        player_b_id: playerBId,
+        winner_id: null,
+        table_number: 0, // placeholder, will be set during scheduling
+        scheduled_time: startDayTime.toISOString(), // placeholder, will be set during scheduling
+        status: 'scheduled',
+        score_a: 0,
+        score_b: 0,
+        next_match_id: parentMatchId,
+        next_match_player_slot: parentSlot,
+      });
+    }
+  }
 
-      if (matchInsertError) throw new Error(matchInsertError.message);
+  // Pre-resolve byes in memory
+  memoryMatches.forEach((m) => {
+    const isFirstRound = m.stage_index === roundsList.length;
+    if (isFirstRound && (m.player_a_id === null || m.player_b_id === null)) {
+      const activePlayerId = m.player_a_id || m.player_b_id;
+      if (activePlayerId) {
+        m.status = 'finished';
+        m.winner_id = activePlayerId;
+        m.score_a = 0;
+        m.score_b = 0;
+        m.table_number = 0; // Bye match has no table number
 
-      createdMatchesMap[`${roundName}_${mIndex}`] = match.id;
-
-      // Handle Automatic Bye Resolution
-      if (isFirstRound && (playerAId === null || playerBId === null)) {
-        const activePlayerId = playerAId || playerBId;
-        if (activePlayerId) {
-          // Finish match immediately and progress player
-          await adminClient
-            .from('matches')
-            .update({
-              status: 'finished',
-              winner_id: activePlayerId,
-              score_a: playerAId ? 8 : 0,
-              score_b: playerBId ? 8 : 0,
-            })
-            .eq('id', match.id);
-
-          if (parentMatchId && parentSlot) {
-            const updateField = parentSlot === 'A' ? 'player_a_id' : 'player_b_id';
-            await adminClient
-              .from('matches')
-              .update({ [updateField]: activePlayerId })
-              .eq('id', parentMatchId);
+        // Propagate winner to next match in memory
+        if (m.next_match_id && m.next_match_player_slot) {
+          const parent = memoryMatches.find(pm => pm.id === m.next_match_id);
+          if (parent) {
+            if (m.next_match_player_slot === 'A') {
+              parent.player_a_id = activePlayerId;
+            } else {
+              parent.player_b_id = activePlayerId;
+            }
           }
         }
       }
     }
+  });
+
+  // Compute dependency minSlots for every match
+  const minSlotMap: { [matchId: string]: number } = {};
+
+  // Loop rounds in reverse order (First Round down to Finals)
+  for (let rIndex = roundsList.length - 1; rIndex >= 0; rIndex--) {
+    const roundName = roundsList[rIndex].roundName;
+    const matchesCount = roundsList[rIndex].matchesCount;
+    const isFirstRound = rIndex === roundsList.length - 1;
+
+    for (let mIndex = 0; mIndex < matchesCount; mIndex++) {
+      const matchObj = memoryMatches.find(m => m.round === roundName && m.mIndex === mIndex);
+      const matchId = matchObj.id;
+
+      if (isFirstRound) {
+        if (matchObj.player_a_id === null || matchObj.player_b_id === null) {
+          minSlotMap[matchId] = -1; // bye match, no slot needed
+        } else {
+          minSlotMap[matchId] = 0; // played match starting in slot 0
+        }
+      } else {
+        const childA = memoryMatches.find(c => c.next_match_id === matchId && c.next_match_player_slot === 'A');
+        const childB = memoryMatches.find(c => c.next_match_id === matchId && c.next_match_player_slot === 'B');
+
+        const slotA = childA ? minSlotMap[childA.id] : -1;
+        const slotB = childB ? minSlotMap[childB.id] : -1;
+
+        minSlotMap[matchId] = Math.max(slotA, slotB) + 1;
+      }
+    }
   }
 
-  await logAdminAction(adminEmail, 'GENERATE_SCHEDULE', { matchesGenerated: matchesCreatedCount });
+  // Schedule played matches dynamically using greedy scheduler to pack tables efficiently
+  const playedMatches = memoryMatches.filter(m => minSlotMap[m.id] >= 0);
+  playedMatches.sort((a, b) => minSlotMap[a.id] - minSlotMap[b.id]);
+
+  let currentSlot = 0;
+  let unscheduled = [...playedMatches];
+
+  while (unscheduled.length > 0) {
+    const ready = unscheduled.filter(m => minSlotMap[m.id] <= currentSlot);
+
+    if (ready.length === 0) {
+      currentSlot++;
+      continue;
+    }
+
+    const toSchedule = ready.slice(0, settings.tables_count);
+
+    toSchedule.forEach((m, idx) => {
+      m.table_number = idx + 1;
+      m.scheduled_time = new Date(startDayTime.getTime() + currentSlot * slotDurationMinutes * 60 * 1000).toISOString();
+      unscheduled = unscheduled.filter(u => u.id !== m.id);
+    });
+
+    currentSlot++;
+  }
+
+  // Insert all generated matches into Supabase
+  for (const m of memoryMatches) {
+    const { error: matchInsertError } = await adminClient
+      .from('matches')
+      .insert({
+        id: m.id,
+        player_a_id: m.player_a_id,
+        player_b_id: m.player_b_id,
+        winner_id: m.winner_id,
+        table_number: m.table_number,
+        scheduled_time: m.scheduled_time,
+        status: m.status,
+        score_a: m.score_a,
+        score_b: m.score_b,
+        current_frame: 1,
+        round: m.round,
+        stage_index: m.stage_index,
+        next_match_id: m.next_match_id,
+        next_match_player_slot: m.next_match_player_slot,
+        total_duration_minutes: settings.match_duration_minutes,
+      });
+
+    if (matchInsertError) throw new Error(matchInsertError.message);
+  }
+
+  await logAdminAction(adminEmail, 'GENERATE_SCHEDULE', { matchesGenerated: playedMatches.length });
   return { success: true };
 }
 
