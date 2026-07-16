@@ -1,0 +1,494 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useTournament } from '@/context/TournamentContext';
+import { Match } from '@/types/database.types';
+import { 
+  Calendar, 
+  Clock, 
+  Edit, 
+  Shuffle, 
+  Loader2, 
+  Play,
+  Settings,
+  X
+} from 'lucide-react';
+
+export default function ScheduleTab() {
+  const { 
+    matches, 
+    isAdmin, 
+    generateDraw, 
+    reschedule, 
+    startM, 
+    overrideSlot 
+  } = useTournament();
+
+  const [generatingDraw, setGeneratingDraw] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'bracket'>('list');
+
+  // Rescheduling State
+  const [reschedulingMatchId, setReschedulingMatchId] = useState<string | null>(null);
+  const [newTable, setNewTable] = useState(1);
+  const [newTime, setNewTime] = useState('');
+  const [savingReschedule, setSavingReschedule] = useState(false);
+
+  // Override State
+  const [overridingMatchId, setOverridingMatchId] = useState<string | null>(null);
+  const [overrideSlotName, setOverrideSlotName] = useState<'A' | 'B'>('A');
+  const [overridePlayerId, setOverridePlayerId] = useState('');
+  const [savingOverride, setSavingOverride] = useState(false);
+
+  const handleGenerateDraw = async () => {
+    if (!confirm('This will wipe out all existing matches and generate a fresh knockout bracket. Proceed?')) {
+      return;
+    }
+    setGeneratingDraw(true);
+    try {
+      await generateDraw();
+    } catch (err: any) {
+      alert(err.message || 'Error generating schedule');
+    } finally {
+      setGeneratingDraw(false);
+    }
+  };
+
+  const handleStartMatch = async (matchId: string) => {
+    try {
+      await startM(matchId);
+    } catch (err: any) {
+      alert(err.message || 'Error starting match');
+    }
+  };
+
+  const openRescheduleModal = (match: Match) => {
+    setReschedulingMatchId(match.id);
+    setNewTable(match.table_number);
+    const localDate = new Date(match.scheduled_time);
+    const tzOffset = localDate.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(localDate.getTime() - tzOffset).toISOString().slice(0, 16);
+    setNewTime(localISOTime);
+  };
+
+  const saveRescheduleAction = async () => {
+    if (!reschedulingMatchId) return;
+    setSavingReschedule(true);
+    try {
+      await reschedule(reschedulingMatchId, newTable, new Date(newTime).toISOString());
+      setReschedulingMatchId(null);
+    } catch (err: any) {
+      alert(err.message || 'Error saving schedule updates');
+    } finally {
+      setSavingReschedule(false);
+    }
+  };
+
+  const handleOverrideSlotAction = async () => {
+    if (!overridingMatchId) return;
+    setSavingOverride(true);
+    try {
+      const targetPlayerId = overridePlayerId.trim() === '' ? null : overridePlayerId.trim();
+      await overrideSlot(overridingMatchId, overrideSlotName, targetPlayerId);
+      setOverridingMatchId(null);
+      setOverridePlayerId('');
+    } catch (err: any) {
+      alert(err.message || 'Error overriding bracket slot');
+    } finally {
+      setSavingOverride(false);
+    }
+  };
+
+  const roundOrder = ['round_of_32', 'round_of_16', 'quarter_finals', 'semi_finals', 'finals'];
+  const groupedByRound: { [key: string]: Match[] } = {};
+  matches.forEach((m) => {
+    if (!groupedByRound[m.round]) {
+      groupedByRound[m.round] = [];
+    }
+    groupedByRound[m.round].push(m);
+  });
+
+  const activeRounds = roundOrder.filter((r) => groupedByRound[r] && groupedByRound[r].length > 0);
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-extrabold text-white">Matches & Brackets</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Explore the schedule list or track the tournament tree.</p>
+        </div>
+
+        <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl w-fit">
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'list'
+                ? 'bg-gradient-to-r from-[#22c55e] to-[#16a34a] text-slate-950 shadow-md font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Schedule List
+          </button>
+          <button
+            onClick={() => setViewMode('bracket')}
+            className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              viewMode === 'bracket'
+                ? 'bg-gradient-to-r from-[#22c55e] to-[#16a34a] text-slate-950 shadow-md font-bold'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            Visual Bracket
+          </button>
+        </div>
+      </div>
+
+      {/* Generate Draw Setup Panel */}
+      {matches.length === 0 && (
+        <div className="glass-panel rounded-3xl p-6 text-center border-dashed border-white/10 max-w-lg mx-auto space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center mx-auto">
+            <Shuffle className="w-6 h-6 text-[#22c55e] animate-pulse" />
+          </div>
+          <div className="space-y-1.5">
+            <h3 className="font-bold text-white text-base">Generate Tournament Draw</h3>
+            <p className="text-xs text-slate-400">
+              No matches have been generated yet. Seeding groups all approved teams, handles byes, separates teammates, and builds the single elimination brackets.
+            </p>
+          </div>
+
+          {isAdmin ? (
+            <button
+              onClick={handleGenerateDraw}
+              disabled={generatingDraw}
+              className="bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#22c55e]/90 hover:to-[#16a34a]/90 text-slate-950 font-extrabold text-xs px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(0,242,254,0.25)] hover:scale-105 inline-flex items-center gap-1.5"
+            >
+              {generatingDraw ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Generating...
+                </>
+              ) : (
+                <>
+                  <Shuffle className="w-4 h-4" /> Seed & Generate Draw
+                </>
+              )}
+            </button>
+          ) : (
+            <div className="text-xs text-[#f59e0b] font-medium bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl inline-block">
+              Please log in as an administrator to generate the tournament draw.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* VIEW MODE: CHRONOLOGICAL LIST */}
+      {viewMode === 'list' && matches.length > 0 && (
+        <div className="space-y-3">
+          {matches.map((match) => {
+            const playerA = match.player_a;
+            const playerB = match.player_b;
+            const nameA = playerA ? playerA.full_name : 'TBD';
+            const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+            const nameB = playerB ? playerB.full_name : 'TBD';
+            const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
+            const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+            return (
+              <div 
+                key={match.id}
+                className="glass-panel rounded-2xl p-4 border border-white/5 space-y-4 hover:border-white/10 transition-all"
+              >
+                {/* Header info */}
+                <div className="flex items-center justify-between text-xs border-b border-white/5 pb-2.5">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <span className="bg-white/5 border border-white/5 px-2 py-0.5 rounded text-[10px] font-bold text-slate-300">
+                      Table {match.table_number}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[#22c55e]" />
+                      {timeStr}
+                    </span>
+                  </div>
+
+                  <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
+                    match.status === 'live'
+                      ? 'text-emerald-400'
+                      : match.status === 'finished'
+                      ? 'text-slate-500'
+                      : 'text-sky-400'
+                  }`}>
+                    {match.status}
+                  </span>
+                </div>
+
+                {/* Matchup details */}
+                <div className="flex items-center justify-between gap-2 px-1">
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-bold text-white block truncate">{nameA}</span>
+                    <span className="text-[10px] text-slate-400 block truncate">{uniA}</span>
+                  </div>
+                  
+                  <div className="px-4 text-center">
+                    <span className="text-[10px] font-extrabold bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] px-2 py-0.5 rounded-full uppercase tracking-widest text-center">
+                      VS
+                    </span>
+                  </div>
+
+                  <div className="flex-1 text-right min-w-0">
+                    <span className="text-sm font-bold text-white block truncate">{nameB}</span>
+                    <span className="text-[10px] text-slate-400 block truncate">{uniB}</span>
+                  </div>
+                </div>
+
+                {/* Admin controls */}
+                {isAdmin && (
+                  <div className="flex items-center gap-2 pt-2 border-t border-white/5 justify-end">
+                    <button
+                      onClick={() => openRescheduleModal(match)}
+                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg flex items-center gap-1"
+                    >
+                      <Edit className="w-3 h-3" /> Reschedule
+                    </button>
+
+                    {match.status === 'scheduled' && (
+                      <button
+                        onClick={() => handleStartMatch(match.id)}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg flex items-center gap-1 shadow-md"
+                      >
+                        <Play className="w-3 h-3 fill-slate-950" /> Start Match
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* VIEW MODE: VISUAL KNOCKOUT BRACKET */}
+      {viewMode === 'bracket' && matches.length > 0 && (
+        <div className="w-full overflow-x-auto pb-6 select-none">
+          <div className="flex gap-8 px-2 min-w-[800px] justify-between">
+            {activeRounds.map((roundKey) => {
+              const roundMatches = groupedByRound[roundKey] || [];
+              let roundTitle = roundKey.replace('_', ' ').replace('round of', 'Round of');
+              if (roundKey === 'semi_finals') roundTitle = 'Semifinals';
+              if (roundKey === 'finals') roundTitle = 'Championship Final';
+
+              return (
+                <div key={roundKey} className="flex-1 flex flex-col gap-6">
+                  {/* Round Heading */}
+                  <div className="text-center border-b border-white/5 pb-2">
+                    <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-300">
+                      {roundTitle}
+                    </h4>
+                    <span className="text-[9px] text-slate-500 font-semibold uppercase">
+                      {roundMatches.length} Matches
+                    </span>
+                  </div>
+
+                  {/* Round Matches List */}
+                  <div className="flex-1 flex flex-col justify-around gap-6 py-4">
+                    {roundMatches.map((m) => {
+                      const nameA = m.player_a ? m.player_a.full_name : 'TBD';
+                      const nameB = m.player_b ? m.player_b.full_name : 'TBD';
+                      const isWinnerA = m.status === 'finished' && m.winner_id === m.player_a_id;
+                      const isWinnerB = m.status === 'finished' && m.winner_id === m.player_b_id;
+
+                      return (
+                        <div 
+                          key={m.id} 
+                          className={`relative glass-panel rounded-xl p-3 border text-xs space-y-2 transition-all ${
+                            m.status === 'live' 
+                              ? 'border-emerald-500/30' 
+                              : 'border-white/5'
+                          }`}
+                        >
+                          {/* Round Match Metadata */}
+                          <div className="flex justify-between items-center text-[9px] text-slate-500 font-bold border-b border-white/5 pb-1">
+                            <span>T-{m.table_number}</span>
+                            <span>{new Date(m.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                          </div>
+
+                          {/* Player A slot */}
+                          <div className="flex items-center justify-between">
+                            <span className={`font-semibold truncate max-w-[120px] ${
+                              isWinnerA ? 'text-[#22c55e] font-bold' : m.winner_id ? 'text-slate-500' : 'text-white'
+                            }`}>
+                              {nameA}
+                            </span>
+                            <span className={`font-bold ${isWinnerA ? 'text-[#22c55e]' : 'text-slate-400'}`}>
+                              {m.score_a}
+                            </span>
+                          </div>
+
+                          {/* Player B slot */}
+                          <div className="flex items-center justify-between">
+                            <span className={`font-semibold truncate max-w-[120px] ${
+                              isWinnerB ? 'text-[#22c55e] font-bold' : m.winner_id ? 'text-slate-500' : 'text-white'
+                            }`}>
+                              {nameB}
+                            </span>
+                            <span className={`font-bold ${isWinnerB ? 'text-[#22c55e]' : 'text-slate-400'}`}>
+                              {m.score_b}
+                            </span>
+                          </div>
+
+                          {/* Admin manual slot overrides */}
+                          {isAdmin && (
+                            <div className="flex items-center justify-between pt-1 border-t border-white/5">
+                              <span className="text-[8px] text-[#22c55e] font-semibold">OVERRIDE:</span>
+                              <div className="flex gap-1.5">
+                                <button
+                                  onClick={() => {
+                                    setOverridingMatchId(m.id);
+                                    setOverrideSlotName('A');
+                                  }}
+                                  className="text-[8px] uppercase tracking-wider font-extrabold bg-white/5 border border-white/10 px-1 py-0.5 rounded hover:bg-white/10"
+                                >
+                                  Slot A
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setOverridingMatchId(m.id);
+                                    setOverrideSlotName('B');
+                                  }}
+                                  className="text-[8px] uppercase tracking-wider font-extrabold bg-white/5 border border-white/10 px-1 py-0.5 rounded hover:bg-white/10"
+                                >
+                                  Slot B
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* RESCHEDULING DIALOG */}
+      {reschedulingMatchId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-sm glass-panel rounded-2xl p-6 border border-white/10 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+              <h3 className="text-sm font-extrabold text-white flex items-center gap-1">
+                <Settings className="w-4 h-4 text-[#22c55e]" /> Reschedule Match
+              </h3>
+              <button 
+                onClick={() => setReschedulingMatchId(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Assign Table Number</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="50"
+                  value={newTable}
+                  onChange={(e) => setNewTable(parseInt(e.target.value))}
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-all"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Match Scheduled Time</label>
+                <input
+                  type="datetime-local"
+                  value={newTime}
+                  onChange={(e) => setNewTime(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-all color-scheme-dark"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setReschedulingMatchId(null)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl py-2.5 text-xs font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={saveRescheduleAction}
+                  disabled={savingReschedule}
+                  className="flex-1 bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#22c55e]/90 hover:to-[#16a34a]/90 text-slate-950 rounded-xl py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5"
+                >
+                  {savingReschedule ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    'Apply Changes'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MANUAL OVERRIDE DIALOG */}
+      {overridingMatchId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-sm glass-panel rounded-2xl p-6 border border-white/10 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-4 border-b border-white/5 pb-2">
+              <h3 className="text-sm font-extrabold text-white flex items-center gap-1">
+                <Settings className="w-4 h-4 text-[#22c55e]" /> Bracket Override Slot {overrideSlotName}
+              </h3>
+              <button 
+                onClick={() => setOverridingMatchId(null)}
+                className="text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <p className="text-[11px] text-slate-400">
+                Type in a Player ID to force slot assignment. If empty, the slot is cleared.
+              </p>
+
+              <div>
+                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Player UUID</label>
+                <input
+                  type="text"
+                  placeholder="Paste player uuid"
+                  value={overridePlayerId}
+                  onChange={(e) => setOverridePlayerId(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none transition-all"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setOverridingMatchId(null)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl py-2.5 text-xs font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleOverrideSlotAction}
+                  disabled={savingOverride}
+                  className="flex-1 bg-amber-400 hover:bg-amber-500 text-slate-950 rounded-xl py-2.5 text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-[0_0_10px_rgba(245,158,11,0.2)]"
+                >
+                  {savingOverride ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    'Apply Override'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
