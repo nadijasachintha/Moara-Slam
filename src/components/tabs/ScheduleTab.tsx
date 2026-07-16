@@ -109,6 +109,183 @@ export default function ScheduleTab() {
 
   const activeRounds = roundOrder.filter((r) => groupedByRound[r] && groupedByRound[r].length > 0);
 
+  // Group matches by scheduled_time for batch display in chronological list view
+  const matchesByTime: { [time: string]: Match[] } = {};
+  matches.forEach((m) => {
+    const timeKey = m.scheduled_time;
+    if (!matchesByTime[timeKey]) {
+      matchesByTime[timeKey] = [];
+    }
+    matchesByTime[timeKey].push(m);
+  });
+
+  const sortedTimes = Object.keys(matchesByTime).sort(
+    (a, b) => new Date(a).getTime() - new Date(b).getTime()
+  );
+
+  const renderScoreCard = (match: Match) => {
+    const playerA = match.player_a;
+    const playerB = match.player_b;
+    const nameA = playerA ? playerA.full_name : 'TBD';
+    const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    const nameB = playerB ? playerB.full_name : 'TBD';
+    const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
+    const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const isBye = match.status === 'finished' && (match.player_a_id === null || match.player_b_id === null);
+    const isTBD = match.player_a_id === null || match.player_b_id === null;
+
+    if (isBye) {
+      const advancedPlayerName = playerA ? nameA : nameB;
+      const advancedPlayerUni = playerA ? uniA : uniB;
+      return (
+        <div 
+          key={match.id}
+          className="relative overflow-hidden bg-gradient-to-br from-[#0c1f0f] to-[#0f2d17] border border-[#22c55e]/15 rounded-2xl p-4 flex flex-col justify-between h-40 opacity-75"
+        >
+          <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-400">
+              Bye Slot
+            </span>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded-full">
+              Advanced
+            </span>
+          </div>
+
+          <div className="text-center py-1">
+            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{advancedPlayerName}</h4>
+            <span className="text-[9px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{advancedPlayerUni}</span>
+            <span className="text-[10px] text-[#22c55e] font-extrabold block mt-2">Moved to the next round</span>
+          </div>
+
+          <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+            <span>{match.round.replace('_', ' ')}</span>
+            <span>Score: 0 - 0</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (isTBD && match.status === 'scheduled') {
+      return (
+        <div 
+          key={match.id}
+          className="relative overflow-hidden bg-slate-900/20 border border-white/5 rounded-2xl p-4 flex flex-col justify-between h-40 opacity-60"
+        >
+          <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-400">
+              TBD Match
+            </span>
+            <span className="text-[9px] font-extrabold uppercase tracking-widest bg-sky-500/10 text-sky-400 px-2 py-0.5 rounded-full">
+              Waiting
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between gap-2 py-1">
+            <div className="flex-1 text-center min-w-0">
+              <h4 className="font-extrabold text-slate-400 text-xs truncate leading-tight">{nameA}</h4>
+              <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
+            </div>
+            <span className="text-[9px] font-extrabold text-slate-600 px-2 py-0.5 leading-none">VS</span>
+            <div className="flex-1 text-center min-w-0">
+              <h4 className="font-extrabold text-slate-400 text-xs truncate leading-tight">{nameB}</h4>
+              <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between pt-1.5 border-t border-white/5 text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+            <span>{match.round.replace('_', ' ')}</span>
+            <span>Score: 0 - 0</span>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div 
+        key={match.id} 
+        className={`relative overflow-hidden bg-gradient-to-br from-[#0c1f0f] to-[#0f2d17] border rounded-2xl shadow-lg p-4 flex flex-col justify-between space-y-4 transition-all duration-300 ${
+          match.status === 'live' 
+            ? 'border-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.05)]' 
+            : 'border-white/5'
+        }`}
+      >
+        {/* Card Header (Table & Status & Scheduled Time) */}
+        <div className="flex items-center justify-between border-b border-white/5 pb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
+              Table {match.table_number}
+            </span>
+            <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1 ${
+              match.status === 'live'
+                ? 'bg-emerald-500 text-slate-950 animate-pulse'
+                : match.status === 'finished'
+                ? 'bg-white/10 text-slate-400'
+                : 'bg-sky-500/10 text-sky-400 border border-sky-500/20'
+            }`}>
+              {match.status === 'live' && <span className="w-1 h-1 bg-slate-950 rounded-full"></span>}
+              {match.status}
+            </span>
+          </div>
+          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+            <Clock className="w-3.5 h-3.5 text-[#22c55e]" />
+            {timeStr}
+          </span>
+        </div>
+
+        {/* Central Display */}
+        <div className="flex items-center justify-between gap-2 py-1">
+          {/* Player A */}
+          <div className="flex-1 text-center min-w-0">
+            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameA}</h4>
+            <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
+          </div>
+
+          {/* Central VS */}
+          <div className="flex flex-col items-center justify-center px-3 shrink-0">
+            <span className="text-[10px] font-extrabold bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] px-2.5 py-0.5 rounded-full uppercase tracking-widest text-center leading-none">
+              VS
+            </span>
+          </div>
+
+          {/* Player B */}
+          <div className="flex-1 text-center min-w-0">
+            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameB}</h4>
+            <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
+          </div>
+        </div>
+
+        {/* Card Footer (Round Details & Admin actions) */}
+        <div className="flex items-center justify-between pt-1 border-t border-white/5">
+          <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
+            {match.round.replace('_', ' ')}
+          </span>
+
+          {isAdmin && (
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => openRescheduleModal(match)}
+                className="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-extrabold text-[9px] uppercase tracking-wider px-2 py-1.5 rounded-lg flex items-center gap-1 transition-all"
+                title="Reschedule Match"
+              >
+                <Edit className="w-3 h-3 text-[#22c55e]" /> Resched
+              </button>
+
+              {match.status === 'scheduled' && (
+                <button
+                  onClick={() => handleStartMatch(match.id)}
+                  className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[9px] uppercase tracking-wider px-2 py-1.5 rounded-lg flex items-center gap-1 transition-all shadow-md"
+                >
+                  <Play className="w-3 h-3 fill-slate-950" /> Start
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -181,83 +358,28 @@ export default function ScheduleTab() {
 
       {/* VIEW MODE: CHRONOLOGICAL LIST */}
       {viewMode === 'list' && matches.length > 0 && (
-        <div className="space-y-3">
-          {matches.map((match) => {
-            const playerA = match.player_a;
-            const playerB = match.player_b;
-            const nameA = playerA ? playerA.full_name : 'TBD';
-            const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
-            const nameB = playerB ? playerB.full_name : 'TBD';
-            const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
-            const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        <div className="space-y-8">
+          {sortedTimes.map((timeKey, idx) => {
+            const timeMatches = matchesByTime[timeKey].sort((a, b) => a.table_number - b.table_number);
+            const timeDate = new Date(timeKey);
+            const timeStr = timeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = timeDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
 
             return (
-              <div 
-                key={match.id}
-                className="glass-panel rounded-2xl p-4 border border-white/5 space-y-4 hover:border-white/10 transition-all"
-              >
-                {/* Header info */}
-                <div className="flex items-center justify-between text-xs border-b border-white/5 pb-2.5">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <span className="bg-white/5 border border-white/5 px-2 py-0.5 rounded text-[10px] font-bold text-slate-300">
-                      Table {match.table_number}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-[#22c55e]" />
-                      {timeStr}
-                    </span>
-                  </div>
-
-                  <span className={`text-[10px] font-extrabold uppercase tracking-wider ${
-                    match.status === 'live'
-                      ? 'text-emerald-400'
-                      : match.status === 'finished'
-                      ? 'text-slate-500'
-                      : 'text-sky-400'
-                  }`}>
-                    {match.status}
+              <div key={timeKey} className="space-y-3.5">
+                <div className="flex items-center justify-between border-b border-white/10 pb-2 px-1">
+                  <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-200 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-[#22c55e]" />
+                    Batch {idx + 1} — {timeStr}
+                  </h3>
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                    {timeMatches.length} Boards Allocated
                   </span>
                 </div>
 
-                {/* Matchup details */}
-                <div className="flex items-center justify-between gap-2 px-1">
-                  <div className="flex-1 min-w-0">
-                    <span className="text-sm font-bold text-white block truncate">{nameA}</span>
-                    <span className="text-[10px] text-slate-400 block truncate">{uniA}</span>
-                  </div>
-                  
-                  <div className="px-4 text-center">
-                    <span className="text-[10px] font-extrabold bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] px-2 py-0.5 rounded-full uppercase tracking-widest text-center">
-                      VS
-                    </span>
-                  </div>
-
-                  <div className="flex-1 text-right min-w-0">
-                    <span className="text-sm font-bold text-white block truncate">{nameB}</span>
-                    <span className="text-[10px] text-slate-400 block truncate">{uniB}</span>
-                  </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {timeMatches.map(renderScoreCard)}
                 </div>
-
-                {/* Admin controls */}
-                {isAdmin && (
-                  <div className="flex items-center gap-2 pt-2 border-t border-white/5 justify-end">
-                    <button
-                      onClick={() => openRescheduleModal(match)}
-                      className="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-bold text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg flex items-center gap-1"
-                    >
-                      <Edit className="w-3 h-3" /> Reschedule
-                    </button>
-
-                    {match.status === 'scheduled' && (
-                      <button
-                        onClick={() => handleStartMatch(match.id)}
-                        className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-extrabold text-[10px] uppercase tracking-wider px-3.5 py-2 rounded-lg flex items-center gap-1 shadow-md"
-                      >
-                        <Play className="w-3 h-3 fill-slate-950" /> Start Match
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}
