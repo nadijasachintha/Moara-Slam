@@ -51,181 +51,186 @@ export async function submitRegistration(payload: {
   players: { fullName: string; indexNumber: string; isLeader: boolean }[];
   submittedByAdminEmail?: string;
 }) {
-  let finalUniId = payload.universityId;
-  let universityName = 'Custom Institution';
+  try {
+    let finalUniId = payload.universityId;
+    let universityName = 'Custom Institution';
 
-  // Create university if manual entry
-  if (payload.universityId.startsWith('manual_')) {
-    const rawName = payload.universityId.replace('manual_', '').trim();
-    const { data: newUni, error: uniError } = await supabase
-      .from('universities')
-      .insert({ name: rawName })
+    // Create university if manual entry
+    if (payload.universityId.startsWith('manual_')) {
+      const rawName = payload.universityId.replace('manual_', '').trim();
+      const { data: newUni, error: uniError } = await supabase
+        .from('universities')
+        .insert({ name: rawName })
+        .select()
+        .single();
+
+      if (uniError) {
+        // If university already exists, fetch it
+        const { data: existingUni } = await supabase
+          .from('universities')
+          .select('id, name')
+          .eq('name', rawName)
+          .maybeSingle();
+        if (existingUni) {
+          finalUniId = existingUni.id;
+          universityName = existingUni.name;
+        } else {
+          throw new Error(uniError.message);
+        }
+      } else {
+        finalUniId = newUni.id;
+        universityName = newUni.name;
+      }
+    } else {
+      const { data: uni } = await supabase
+        .from('universities')
+        .select('name')
+        .eq('id', payload.universityId)
+        .single();
+      if (uni) {
+        universityName = uni.name;
+      }
+    }
+
+    // Verify if submitted by an admin
+    let isAdminSubmitting = false;
+    if (payload.submittedByAdminEmail) {
+      const adminClient = getSupabaseAdmin();
+      const { data: adminUser } = await adminClient
+        .from('admins')
+        .select('id')
+        .eq('email', payload.submittedByAdminEmail)
+        .maybeSingle();
+      if (adminUser) {
+        isAdminSubmitting = true;
+      }
+    }
+
+    const initialStatus = isAdminSubmitting ? 'approved' : 'pending';
+
+    const { data: team, error: teamError } = await supabase
+      .from('teams')
+      .insert({
+        name: payload.teamName,
+        university_id: finalUniId,
+        leader_name: payload.leaderName,
+        leader_email: payload.leaderEmail,
+      })
       .select()
       .single();
 
-    if (uniError) {
-      // If university already exists, fetch it
-      const { data: existingUni } = await supabase
-        .from('universities')
-        .select('id, name')
-        .eq('name', rawName)
-        .maybeSingle();
-      if (existingUni) {
-        finalUniId = existingUni.id;
-        universityName = existingUni.name;
-      } else {
-        throw new Error(uniError.message);
+    if (teamError) throw new Error(teamError.message);
+
+    const playersData = payload.players.map((p) => ({
+      team_id: team.id,
+      full_name: p.fullName,
+      index_number: p.indexNumber,
+      is_leader: p.isLeader,
+    }));
+
+    const { error: playersError } = await supabase
+      .from('players')
+      .insert(playersData);
+
+    if (playersError) throw new Error(playersError.message);
+
+    const { data: registration, error: regError } = await supabase
+      .from('registrations')
+      .insert({
+        team_id: team.id,
+        status: initialStatus,
+      })
+      .select()
+      .single();
+
+    if (regError) throw new Error(regError.message);
+
+    // Send Confirmation Email
+    if (isAdminSubmitting) {
+      try {
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey && !apiKey.includes('placeholder')) {
+          await resend.emails.send({
+            from: 'Mora Slams <onboarding@resend.dev>',
+            to: [payload.leaderEmail],
+            subject: 'Registration Approved - Mora Slams 2026',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
+                <div style="text-align: center; border-bottom: 1px solid rgba(34, 197, 94, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
+                  <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
+                  <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
+                </div>
+                
+                <h2 style="color: #22c55e; font-size: 18px; margin-top: 0;">Congratulations!</h2>
+                <p style="font-size: 14px; color: #cbd5e1;">Hi <strong>${payload.leaderName}</strong>,</p>
+                <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
+                  Your team <strong>${payload.teamName}</strong> from <strong>${universityName}</strong> has been officially approved to enter the Mora Slams Carrom Tournament.
+                </p>
+                <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
+                  The knockout brackets, schedule tables, and schedules are updated live on the tournament dashboard. Be sure to check the scheduling page for match slots and assignments.
+                </p>
+
+                <div style="background-color: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.15); border-radius: 8px; padding: 12px; font-size: 12px; color: #22c55e; text-align: center; margin-top: 20px;">
+                  <strong>Roster Confirmed & Seeding Queued</strong>
+                </div>
+
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
+                <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
+                  This is an automated notification from the Mora Slams Tournament Management System.
+                </p>
+              </div>
+            `,
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send direct registration confirmation email:", emailError);
       }
     } else {
-      finalUniId = newUni.id;
-      universityName = newUni.name;
-    }
-  } else {
-    const { data: uni } = await supabase
-      .from('universities')
-      .select('name')
-      .eq('id', payload.universityId)
-      .single();
-    if (uni) {
-      universityName = uni.name;
-    }
-  }
+      try {
+        const apiKey = process.env.RESEND_API_KEY;
+        if (apiKey && !apiKey.includes('placeholder')) {
+          await resend.emails.send({
+            from: 'Mora Slams <onboarding@resend.dev>',
+            to: [payload.leaderEmail],
+            subject: 'Registration Received - Mora Slams 2026',
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
+                <div style="text-align: center; border-bottom: 1px solid rgba(245, 166, 35, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
+                  <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
+                  <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
+                </div>
+                
+                <h2 style="color: #f5a623; font-size: 18px; margin-top: 0;">Registration Received!</h2>
+                <p style="font-size: 14px; color: #cbd5e1;">Hi <strong>${payload.leaderName}</strong>,</p>
+                <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
+                  We have successfully received your team registration for <strong>${payload.teamName}</strong> from <strong>${universityName}</strong>.
+                </p>
+                <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
+                  Your entry is currently <strong>pending approval</strong> by tournament administrators. Once the administrators verify your credentials and approve the registration, you will receive another confirmation email with your bracket slot details.
+                </p>
 
-  // Verify if submitted by an admin
-  let isAdminSubmitting = false;
-  if (payload.submittedByAdminEmail) {
-    const adminClient = getSupabaseAdmin();
-    const { data: adminUser } = await adminClient
-      .from('admins')
-      .select('id')
-      .eq('email', payload.submittedByAdminEmail)
-      .maybeSingle();
-    if (adminUser) {
-      isAdminSubmitting = true;
-    }
-  }
+                <div style="background-color: rgba(245, 166, 35, 0.05); border: 1px solid rgba(245, 166, 35, 0.15); border-radius: 8px; padding: 12px; font-size: 12px; color: #f5a623; text-align: center; margin-top: 20px;">
+                  <strong>Status: Pending Verification</strong>
+                </div>
 
-  const initialStatus = isAdminSubmitting ? 'approved' : 'pending';
-
-  const { data: team, error: teamError } = await supabase
-    .from('teams')
-    .insert({
-      name: payload.teamName,
-      university_id: finalUniId,
-      leader_name: payload.leaderName,
-      leader_email: payload.leaderEmail,
-    })
-    .select()
-    .single();
-
-  if (teamError) throw new Error(teamError.message);
-
-  const playersData = payload.players.map((p) => ({
-    team_id: team.id,
-    full_name: p.fullName,
-    index_number: p.indexNumber,
-    is_leader: p.isLeader,
-  }));
-
-  const { error: playersError } = await supabase
-    .from('players')
-    .insert(playersData);
-
-  if (playersError) throw new Error(playersError.message);
-
-  const { data: registration, error: regError } = await supabase
-    .from('registrations')
-    .insert({
-      team_id: team.id,
-      status: initialStatus,
-    })
-    .select()
-    .single();
-
-  if (regError) throw new Error(regError.message);
-
-  // Send Confirmation Email
-  if (isAdminSubmitting) {
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      if (apiKey && !apiKey.includes('placeholder')) {
-        await resend.emails.send({
-          from: 'Mora Slams <onboarding@resend.dev>',
-          to: [payload.leaderEmail],
-          subject: 'Registration Approved - Mora Slams 2026',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
-              <div style="text-align: center; border-bottom: 1px solid rgba(34, 197, 94, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
-                <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
-                <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
+                <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
+                <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
+                  This is an automated notification from the Mora Slams Tournament Management System.
+                </p>
               </div>
-              
-              <h2 style="color: #22c55e; font-size: 18px; margin-top: 0;">Congratulations!</h2>
-              <p style="font-size: 14px; color: #cbd5e1;">Hi <strong>${payload.leaderName}</strong>,</p>
-              <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
-                Your team <strong>${payload.teamName}</strong> from <strong>${universityName}</strong> has been officially approved to enter the Mora Slams Carrom Tournament.
-              </p>
-              <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
-                The knockout brackets, schedule tables, and schedules are updated live on the tournament dashboard. Be sure to check the scheduling page for match slots and assignments.
-              </p>
-
-              <div style="background-color: rgba(34, 197, 94, 0.05); border: 1px solid rgba(34, 197, 94, 0.15); border-radius: 8px; padding: 12px; font-size: 12px; color: #22c55e; text-align: center; margin-top: 20px;">
-                <strong>Roster Confirmed & Seeding Queued</strong>
-              </div>
-
-              <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
-              <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
-                This is an automated notification from the Mora Slams Tournament Management System.
-              </p>
-            </div>
-          `,
-        });
+            `,
+          });
+        }
+      } catch (emailError) {
+        console.error("Failed to send pending registration email:", emailError);
       }
-    } catch (emailError) {
-      console.error("Failed to send direct registration confirmation email:", emailError);
     }
-  } else {
-    try {
-      const apiKey = process.env.RESEND_API_KEY;
-      if (apiKey && !apiKey.includes('placeholder')) {
-        await resend.emails.send({
-          from: 'Mora Slams <onboarding@resend.dev>',
-          to: [payload.leaderEmail],
-          subject: 'Registration Received - Mora Slams 2026',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
-              <div style="text-align: center; border-bottom: 1px solid rgba(245, 166, 35, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
-                <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
-                <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
-              </div>
-              
-              <h2 style="color: #f5a623; font-size: 18px; margin-top: 0;">Registration Received!</h2>
-              <p style="font-size: 14px; color: #cbd5e1;">Hi <strong>${payload.leaderName}</strong>,</p>
-              <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
-                We have successfully received your team registration for <strong>${payload.teamName}</strong> from <strong>${universityName}</strong>.
-              </p>
-              <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
-                Your entry is currently <strong>pending approval</strong> by tournament administrators. Once the administrators verify your credentials and approve the registration, you will receive another confirmation email with your bracket slot details.
-              </p>
 
-              <div style="background-color: rgba(245, 166, 35, 0.05); border: 1px solid rgba(245, 166, 35, 0.15); border-radius: 8px; padding: 12px; font-size: 12px; color: #f5a623; text-align: center; margin-top: 20px;">
-                <strong>Status: Pending Verification</strong>
-              </div>
-
-              <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
-              <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
-                This is an automated notification from the Mora Slams Tournament Management System.
-              </p>
-            </div>
-          `,
-        });
-      }
-    } catch (emailError) {
-      console.error("Failed to send pending registration email:", emailError);
-    }
+    return { success: true, team, registration };
+  } catch (error: any) {
+    console.error("submitRegistration error:", error);
+    return { success: false, error: error.message || 'An unexpected error occurred.' };
   }
-
-  return { team, registration };
 }
 
 // Fetch matches (live, scheduled, finished) with details

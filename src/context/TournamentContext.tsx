@@ -306,10 +306,14 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
   const submitReg = async (payload: any) => {
     if (!isDemoMode) {
-      return submitRegistration({
+      const res = await submitRegistration({
         ...payload,
         submittedByAdminEmail: isAdmin ? adminEmail : undefined
       });
+      if (res && res.success === false) {
+        throw new Error(res.error || 'An unexpected registration error occurred.');
+      }
+      return res;
     }
 
     // Demo Registration Simulation
