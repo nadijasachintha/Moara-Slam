@@ -102,6 +102,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'live' | 'schedule' | 'results' | 'register' | 'admin'>('live');
+  const [syncChannel, setSyncChannel] = useState<any>(null);
 
   // Checks if Supabase has custom endpoints set up
   useEffect(() => {
@@ -232,8 +233,24 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       const { data: sData } = await supabase.from('tournament_settings').select('*').single();
       if (sData) setSettings(sData);
 
-      // Listen for realtime matches
-      supabase.channel('supabase_db_sync')
+      // Listen for realtime matches and instant broadcast updates
+      const channel = supabase.channel('supabase_db_sync')
+        .on('broadcast', { event: 'optimistic_score_update' }, (payload: any) => {
+          const { matchId, scoreA, scoreB, currentFrame } = payload.payload;
+          setMatches((prevMatches) => 
+            prevMatches.map((m) => {
+              if (m.id === matchId) {
+                return {
+                  ...m,
+                  score_a: scoreA,
+                  score_b: scoreB,
+                  current_frame: currentFrame,
+                };
+              }
+              return m;
+            })
+          );
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, async (payload: any) => {
           const oldMatch = payload.old;
           const newMatch = payload.new;
@@ -272,6 +289,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           }
         })
         .subscribe();
+        
+      setSyncChannel(channel);
 
     } catch (err) {
       console.error('Supabase load error:', err);
@@ -746,6 +765,15 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       return m;
     });
     setMatches(updated);
+
+    // Broadcast instant update to all other connected clients
+    if (syncChannel) {
+      syncChannel.send({
+        type: 'broadcast',
+        event: 'optimistic_score_update',
+        payload: { matchId, scoreA, scoreB, currentFrame: frame }
+      });
+    }
 
     // 2. Database update in background
     if (!isDemoMode) {
