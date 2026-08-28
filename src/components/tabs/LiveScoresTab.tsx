@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { Match } from '@/types/database.types';
 import MatchTimer from '@/components/MatchTimer';
@@ -16,6 +16,219 @@ import {
   Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+interface RefereeControlsProps {
+  match: Match;
+  onUpdateScore: (matchId: string, scoreA: number, scoreB: number, frame: number) => Promise<void>;
+  onPause: (matchId: string) => Promise<void>;
+  onResume: (matchId: string) => Promise<void>;
+  onConfirmResult: (matchId: string, winnerId: string) => Promise<void>;
+  confirmWinnerId: string | null;
+  setConfirmWinnerId: (id: string | null) => void;
+  submittingResult: boolean;
+  nameA: string;
+  nameB: string;
+}
+
+function RefereeControls({
+  match,
+  onUpdateScore,
+  onPause,
+  onResume,
+  onConfirmResult,
+  confirmWinnerId,
+  setConfirmWinnerId,
+  submittingResult,
+  nameA,
+  nameB
+}: RefereeControlsProps) {
+  const [scoreA, setScoreA] = useState(match.score_a);
+  const [scoreB, setScoreB] = useState(match.score_b);
+  const [frame, setFrame] = useState(match.current_frame);
+  const [saving, setSaving] = useState(false);
+
+  // Sync if database updates from other sources (realtime)
+  useEffect(() => {
+    setScoreA(match.score_a);
+    setScoreB(match.score_b);
+    setFrame(match.current_frame);
+  }, [match.score_a, match.score_b, match.current_frame]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onUpdateScore(match.id, scoreA, scoreB, frame);
+    } catch (err: any) {
+      alert(err.message || 'Error saving scores');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="pt-3 border-t border-white/5 space-y-3.5">
+      {/* Timer Control */}
+      <div className="flex gap-2">
+        {!match.is_paused ? (
+          <button
+            onClick={() => onPause(match.id)}
+            className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-extrabold py-2 rounded-xl flex items-center justify-center gap-1 transition-all"
+          >
+            <Pause className="w-3.5 h-3.5 fill-slate-950" /> Pause Timer
+          </button>
+        ) : (
+          <button
+            onClick={() => onResume(match.id)}
+            className="flex-1 bg-[#22c55e] hover:bg-[#22c55e]/90 text-slate-950 text-[10px] font-extrabold py-2 rounded-xl flex items-center justify-center gap-1 transition-all"
+          >
+            <Play className="w-3.5 h-3.5 fill-slate-950" /> Resume Timer
+          </button>
+        )}
+      </div>
+
+      {/* Score Fields Grid */}
+      <div className="grid grid-cols-2 gap-2">
+        {/* P1 Controls */}
+        <div className="bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex flex-col items-center">
+          <span className="text-[9px] text-slate-400 font-bold block mb-1.5 leading-none uppercase tracking-wider">P1 Points</span>
+          <div className="flex items-center gap-2">
+            <button 
+              type="button"
+              onClick={() => setScoreA(prev => Math.max(0, prev - 1))}
+              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold transition-all"
+            >
+              -
+            </button>
+            <input 
+              type="number"
+              min="0"
+              value={scoreA}
+              onChange={(e) => setScoreA(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-12 h-7 bg-slate-950/80 border border-white/10 rounded-lg text-center text-xs font-black text-white focus:outline-none focus:border-[#22c55e]/50"
+            />
+            <button 
+              type="button"
+              onClick={() => setScoreA(prev => prev + 1)}
+              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold transition-all"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        {/* P2 Controls */}
+        <div className="bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex flex-col items-center">
+          <span className="text-[9px] text-slate-400 font-bold block mb-1.5 leading-none uppercase tracking-wider">P2 Points</span>
+          <div className="flex items-center gap-2">
+            <button 
+              type="button"
+              onClick={() => setScoreB(prev => Math.max(0, prev - 1))}
+              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold transition-all"
+            >
+              -
+            </button>
+            <input 
+              type="number"
+              min="0"
+              value={scoreB}
+              onChange={(e) => setScoreB(Math.max(0, parseInt(e.target.value) || 0))}
+              className="w-12 h-7 bg-slate-950/80 border border-white/10 rounded-lg text-center text-xs font-black text-white focus:outline-none focus:border-[#22c55e]/50"
+            />
+            <button 
+              type="button"
+              onClick={() => setScoreB(prev => prev + 1)}
+              className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold transition-all"
+            >
+              +
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Adjust Frame and Save Row */}
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex items-center justify-between bg-slate-950/40 px-2.5 py-1.5 rounded-xl border border-white/5 h-10">
+          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">Frame</span>
+          <div className="flex items-center gap-1.5">
+            <button 
+              type="button"
+              onClick={() => setFrame(prev => Math.max(1, prev - 1))}
+              className="w-5 h-5 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-[10px] font-extrabold transition-all"
+            >
+              -
+            </button>
+            <span className="text-xs font-black text-white min-w-[14px] text-center">{frame}</span>
+            <button 
+              type="button"
+              onClick={() => setFrame(prev => Math.min(8, prev + 1))}
+              className="w-5 h-5 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-[10px] font-extrabold transition-all"
+            >
+              +
+            </button>
+          </div>
+        </div>
+
+        <button
+          onClick={handleSave}
+          disabled={saving || (scoreA === match.score_a && scoreB === match.score_b && frame === match.current_frame)}
+          className="flex-1 bg-gradient-to-r from-[#22c55e] to-[#16a34a] disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 hover:from-[#22c55e]/90 hover:to-[#16a34a]/90 text-slate-950 font-extrabold text-[10px] uppercase tracking-wider py-2 rounded-xl h-10 flex items-center justify-center gap-1 transition-all shadow-[0_0_10px_rgba(34,197,94,0.15)] disabled:shadow-none"
+        >
+          {saving ? (
+            <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+          ) : (
+            'Save Score'
+          )}
+        </button>
+      </div>
+
+      {/* Winner Selection & Finish Match */}
+      <div className="pt-2 border-t border-white/5 space-y-2">
+        <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+          Confirm Match Result:
+        </span>
+        
+        <div className="grid grid-cols-2 gap-1.5">
+          <button
+            onClick={() => setConfirmWinnerId(match.player_a_id)}
+            className={`px-2 py-1.5 rounded-lg text-[9px] font-bold border truncate transition-all ${
+              confirmWinnerId === match.player_a_id
+                ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
+                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+            }`}
+          >
+            {nameA}
+          </button>
+          
+          <button
+            onClick={() => setConfirmWinnerId(match.player_b_id)}
+            className={`px-2 py-1.5 rounded-lg text-[9px] font-bold border truncate transition-all ${
+              confirmWinnerId === match.player_b_id
+                ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
+                : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
+            }`}
+          >
+            {nameB}
+          </button>
+        </div>
+
+        {confirmWinnerId && (
+          <button
+            onClick={() => onConfirmResult(match.id, confirmWinnerId)}
+            disabled={submittingResult}
+            className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-2 rounded-xl text-[10px] flex items-center justify-center gap-1 shadow-md mt-1 animate-in fade-in slide-in-from-bottom-2 duration-150 transition-all"
+          >
+            {submittingResult ? (
+              <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
+            ) : (
+              <Check className="w-3.5 h-3.5 stroke-[3]" />
+            )}
+            Confirm Winner
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 export default function LiveScoresTab() {
   const { 
@@ -61,31 +274,7 @@ export default function LiveScoresTab() {
     }
   };
 
-  const adjustScore = async (match: Match, side: 'A' | 'B', amount: number) => {
-    let newScoreA = match.score_a;
-    let newScoreB = match.score_b;
 
-    if (side === 'A') {
-      newScoreA = Math.max(0, match.score_a + amount);
-    } else {
-      newScoreB = Math.max(0, match.score_b + amount);
-    }
-
-    try {
-      await updateScore(match.id, newScoreA, newScoreB, match.current_frame);
-    } catch (err: any) {
-      alert(err.message || 'Error updating score');
-    }
-  };
-
-  const adjustFrame = async (match: Match, amount: number) => {
-    const newFrame = Math.max(1, Math.min(8, match.current_frame + amount));
-    try {
-      await updateScore(match.id, match.score_a, match.score_b, newFrame);
-    } catch (err: any) {
-      alert(err.message || 'Error adjusting frame');
-    }
-  };
 
   const handleConfirmResult = async (matchId: string) => {
     if (!confirmWinnerId) {
@@ -384,135 +573,19 @@ export default function LiveScoresTab() {
               animate={{ height: 'auto', opacity: 1 }}
               exit={{ height: 0, opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="pt-3 border-t border-white/5 space-y-3.5"
             >
-              {/* Timer Control */}
-              <div className="flex gap-2">
-                {!match.is_paused ? (
-                  <button
-                    onClick={() => handlePause(match.id)}
-                    className="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 text-[10px] font-extrabold py-2 rounded-xl flex items-center justify-center gap-1"
-                  >
-                    <Pause className="w-3.5 h-3.5 fill-slate-950" /> Pause Timer
-                  </button>
-                ) : (
-                  <button
-                    onClick={() => handleResume(match.id)}
-                    className="flex-1 bg-[#22c55e] hover:bg-[#22c55e]/90 text-slate-950 text-[10px] font-extrabold py-2 rounded-xl flex items-center justify-center gap-1"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-slate-950" /> Resume Timer
-                  </button>
-                )}
-              </div>
-
-              {/* Increments / Decrements Grid */}
-              <div className="grid grid-cols-2 gap-2">
-                {/* P1 Controls */}
-                <div className="bg-slate-950/40 p-2 rounded-xl border border-white/5 flex flex-col items-center">
-                  <span className="text-[9px] text-slate-400 font-bold block mb-1 leading-none">P1 Points</span>
-                  <div className="flex items-center gap-2.5">
-                    <button 
-                      onClick={() => adjustScore(match, 'A', -1)}
-                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
-                    >
-                      -
-                    </button>
-                    <span className="text-xs font-black text-white min-w-[14px] text-center">{match.score_a}</span>
-                    <button 
-                      onClick={() => adjustScore(match, 'A', 1)}
-                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-
-                {/* P2 Controls */}
-                <div className="bg-slate-950/40 p-2 rounded-xl border border-white/5 flex flex-col items-center">
-                  <span className="text-[9px] text-slate-400 font-bold block mb-1 leading-none">P2 Points</span>
-                  <div className="flex items-center gap-2.5">
-                    <button 
-                      onClick={() => adjustScore(match, 'B', -1)}
-                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
-                    >
-                      -
-                    </button>
-                    <span className="text-xs font-black text-white min-w-[14px] text-center">{match.score_b}</span>
-                    <button 
-                      onClick={() => adjustScore(match, 'B', 1)}
-                      className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Adjust Frame */}
-              <div className="flex items-center justify-between bg-slate-950/40 p-2 rounded-xl border border-white/5">
-                <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider pl-1">Frame</span>
-                <div className="flex items-center gap-2">
-                  <button 
-                    onClick={() => adjustFrame(match, -1)}
-                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
-                  >
-                    -
-                  </button>
-                  <span className="text-xs font-black text-white min-w-[16px] text-center">{match.current_frame}</span>
-                  <button 
-                    onClick={() => adjustFrame(match, 1)}
-                    className="w-6 h-6 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* Winner Selection & Finish Match */}
-              <div className="pt-2 border-t border-white/5 space-y-2">
-                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest">
-                  Confirm Match Result:
-                </span>
-                
-                <div className="grid grid-cols-2 gap-1.5">
-                  <button
-                    onClick={() => setConfirmWinnerId(match.player_a_id)}
-                    className={`px-2 py-1.5 rounded-lg text-[9px] font-bold border truncate transition-all ${
-                      confirmWinnerId === match.player_a_id
-                        ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
-                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {nameA}
-                  </button>
-                  
-                  <button
-                    onClick={() => setConfirmWinnerId(match.player_b_id)}
-                    className={`px-2 py-1.5 rounded-lg text-[9px] font-bold border truncate transition-all ${
-                      confirmWinnerId === match.player_b_id
-                        ? 'bg-[#22c55e] border-transparent text-slate-950 font-black'
-                        : 'bg-white/5 border-white/10 text-white hover:bg-white/10'
-                    }`}
-                  >
-                    {nameB}
-                  </button>
-                </div>
-
-                {confirmWinnerId && (
-                  <button
-                    onClick={() => handleConfirmResult(match.id)}
-                    disabled={submittingResult}
-                    className="w-full bg-amber-500 hover:bg-amber-600 text-slate-950 font-extrabold py-2 rounded-xl text-[10px] flex items-center justify-center gap-1 shadow-md mt-1 animate-in fade-in slide-in-from-bottom-2 duration-150"
-                  >
-                    {submittingResult ? (
-                      <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-                    ) : (
-                      <Check className="w-3.5 h-3.5 stroke-[3]" />
-                    )}
-                    Confirm Winner
-                  </button>
-                )}
-              </div>
+              <RefereeControls 
+                match={match}
+                onUpdateScore={updateScore}
+                onPause={handlePause}
+                onResume={handleResume}
+                onConfirmResult={handleConfirmResult}
+                confirmWinnerId={confirmWinnerId}
+                setConfirmWinnerId={setConfirmWinnerId}
+                submittingResult={submittingResult}
+                nameA={nameA}
+                nameB={nameB}
+              />
             </motion.div>
           )}
         </AnimatePresence>

@@ -234,9 +234,36 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
 
       // Listen for realtime matches
       supabase.channel('supabase_db_sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, async () => {
-          const freshMatches = await getMatches();
-          setMatches(freshMatches);
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, async (payload: any) => {
+          const oldMatch = payload.old;
+          const newMatch = payload.new;
+
+          // If only scores or frames changed, merge them locally to avoid fetching all matches
+          const isOnlyScoreOrFrame = oldMatch && newMatch && 
+            oldMatch.status === newMatch.status && 
+            oldMatch.winner_id === newMatch.winner_id &&
+            oldMatch.player_a_id === newMatch.player_a_id &&
+            oldMatch.player_b_id === newMatch.player_b_id &&
+            oldMatch.is_paused === newMatch.is_paused;
+
+          if (isOnlyScoreOrFrame) {
+            setMatches((prevMatches) => 
+              prevMatches.map((m) => {
+                if (m.id === newMatch.id) {
+                  return {
+                    ...m,
+                    score_a: newMatch.score_a,
+                    score_b: newMatch.score_b,
+                    current_frame: newMatch.current_frame,
+                  };
+                }
+                return m;
+              })
+            );
+          } else {
+            const freshMatches = await getMatches();
+            setMatches(freshMatches);
+          }
         })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'registrations' }, async () => {
           if (isAdmin) {
