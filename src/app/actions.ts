@@ -55,9 +55,22 @@ export async function submitRegistration(payload: {
     let finalUniId = payload.universityId;
     let universityName = 'Custom Institution';
 
+    const defaultUniMap: { [key: string]: string } = {
+      'u1': 'University of Moratuwa',
+      'u2': 'University of Colombo',
+      'u3': 'University of Peradeniya',
+      'u4': 'Stanford University',
+      'u5': 'MIT'
+    };
+
+    let targetUniId = payload.universityId;
+    if (targetUniId in defaultUniMap) {
+      targetUniId = 'manual_' + defaultUniMap[targetUniId];
+    }
+
     // Create university if manual entry
-    if (payload.universityId.startsWith('manual_')) {
-      const rawName = payload.universityId.replace('manual_', '').trim();
+    if (targetUniId.startsWith('manual_')) {
+      const rawName = targetUniId.replace('manual_', '').trim();
       const { data: newUni, error: uniError } = await supabase
         .from('universities')
         .insert({ name: rawName })
@@ -85,10 +98,11 @@ export async function submitRegistration(payload: {
       const { data: uni } = await supabase
         .from('universities')
         .select('name')
-        .eq('id', payload.universityId)
+        .eq('id', targetUniId)
         .single();
       if (uni) {
         universityName = uni.name;
+        finalUniId = targetUniId;
       }
     }
 
