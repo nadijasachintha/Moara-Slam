@@ -620,11 +620,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   };
 
   const startM = async (matchId: string) => {
-    if (!isDemoMode) {
-      await startMatch(matchId, adminEmail);
-      return;
-    }
-
+    // 1. Optimistic local update
     const updated = matches.map(m => {
       if (m.id === matchId) {
         return {
@@ -639,16 +635,21 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       return m;
     });
     setMatches(updated);
+
+    // 2. Database update in background
+    if (!isDemoMode) {
+      startMatch(matchId, adminEmail).catch((err) => {
+        console.error('Failed to start match in database:', err);
+      });
+      return;
+    }
+
     saveDemoState('matches', updated);
     addDemoAudit('START_MATCH', { matchId });
   };
 
   const pauseM = async (matchId: string) => {
-    if (!isDemoMode) {
-      await pauseMatch(matchId, adminEmail);
-      return;
-    }
-
+    // 1. Optimistic local update
     const updated = matches.map(m => {
       if (m.id === matchId) {
         return {
@@ -660,16 +661,21 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       return m;
     });
     setMatches(updated);
+
+    // 2. Database update in background
+    if (!isDemoMode) {
+      pauseMatch(matchId, adminEmail).catch((err) => {
+        console.error('Failed to pause match in database:', err);
+      });
+      return;
+    }
+
     saveDemoState('matches', updated);
     addDemoAudit('PAUSE_MATCH', { matchId });
   };
 
   const resumeM = async (matchId: string) => {
-    if (!isDemoMode) {
-      await resumeMatch(matchId, adminEmail);
-      return;
-    }
-
+    // 1. Optimistic local update
     const updated = matches.map(m => {
       if (m.id === matchId) {
         let pauseSecs = m.pause_duration_seconds;
@@ -686,16 +692,21 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       return m;
     });
     setMatches(updated);
+
+    // 2. Database update in background
+    if (!isDemoMode) {
+      resumeMatch(matchId, adminEmail).catch((err) => {
+        console.error('Failed to resume match in database:', err);
+      });
+      return;
+    }
+
     saveDemoState('matches', updated);
     addDemoAudit('RESUME_MATCH', { matchId });
   };
 
   const updateScore = async (matchId: string, scoreA: number, scoreB: number, frame: number) => {
-    if (!isDemoMode) {
-      await updateMatchScore({ matchId, scoreA, scoreB, currentFrame: frame, adminEmail });
-      return;
-    }
-
+    // 1. Optimistic local update
     const updated = matches.map(m => {
       if (m.id === matchId) {
         return {
@@ -708,16 +719,21 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       return m;
     });
     setMatches(updated);
+
+    // 2. Database update in background
+    if (!isDemoMode) {
+      updateMatchScore({ matchId, scoreA, scoreB, currentFrame: frame, adminEmail }).catch((err) => {
+        console.error('Failed to update score in database:', err);
+      });
+      return;
+    }
+
     saveDemoState('matches', updated);
     addDemoAudit('UPDATE_SCORE', { matchId, scoreA, scoreB, currentFrame: frame });
   };
 
   const confirmWinner = async (matchId: string, winnerId: string) => {
-    if (!isDemoMode) {
-      await confirmMatchResult({ matchId, winnerId, adminEmail });
-      return;
-    }
-
+    // 1. Optimistic local update
     const list = [...matches];
     const mIdx = list.findIndex(m => m.id === matchId);
     if (mIdx !== -1) {
@@ -739,11 +755,19 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
           }
         }
       }
-
       setMatches(list);
-      saveDemoState('matches', list);
-      addDemoAudit('CONFIRM_RESULT', { matchId, winnerId });
     }
+
+    // 2. Database update in background
+    if (!isDemoMode) {
+      confirmMatchResult({ matchId, winnerId, adminEmail }).catch((err) => {
+        console.error('Failed to confirm result in database:', err);
+      });
+      return;
+    }
+
+    saveDemoState('matches', list);
+    addDemoAudit('CONFIRM_RESULT', { matchId, winnerId });
   };
 
   const reschedule = async (matchId: string, table: number, time: string) => {
