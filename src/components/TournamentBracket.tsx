@@ -18,8 +18,8 @@ export default function TournamentBracket({ matches }: TournamentBracketProps) {
       map.get(idx)!.push(m);
     });
     
-    // Sort keys so rounds go from left to right (0 to max)
-    const sortedKeys = Array.from(map.keys()).sort((a, b) => a - b);
+    // Sort keys descending so highest stage_index (first round) is on the left, finals on the right.
+    const sortedKeys = Array.from(map.keys()).sort((a, b) => b - a);
     return sortedKeys.map(k => map.get(k)!);
   }, [matches]);
 
