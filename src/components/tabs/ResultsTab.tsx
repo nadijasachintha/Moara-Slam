@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { useTournament } from '@/context/TournamentContext';
 import { Match } from '@/types/database.types';
+import TournamentBracket from '@/components/TournamentBracket';
 import { 
   Trophy, 
   History,
@@ -217,6 +218,18 @@ export default function ResultsTab() {
         <p className="text-xs text-slate-400 mt-0.5">Explore completed matchups, final scores, and brackets progression.</p>
       </div>
 
+      {/* Bracket View */}
+      {matches.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
+            <Trophy className="w-4 h-4 text-[#22c55e]" /> Live Bracket
+          </h3>
+          <TournamentBracket matches={matches} />
+        </div>
+      )}
+
+      {/* Completed Matches List */}
+      <h3 className="text-sm font-bold text-slate-300 mb-3 mt-6">Completed Matches</h3>
       {finishedMatches.length === 0 ? (
         <div className="glass-panel border-dashed border-white/10 rounded-3xl p-10 text-center max-w-lg mx-auto space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-400">
