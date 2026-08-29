@@ -9,7 +9,7 @@ import RegisterTab from '@/components/tabs/RegisterTab';
 import AdminTab from '@/components/tabs/AdminTab';
 
 export default function HomePage() {
-  const { activeTab, loading } = useTournament();
+  const { activeTab, loading, isAdmin } = useTournament();
 
   if (loading) {
     return (
@@ -29,9 +29,9 @@ export default function HomePage() {
     case 'results':
       return <ResultsTab />;
     case 'register':
-      return <RegisterTab />;
+      return isAdmin ? <RegisterTab /> : <LiveScoresTab />;
     case 'admin':
-      return <AdminTab />;
+      return isAdmin ? <AdminTab /> : <LiveScoresTab />;
     default:
       return <LiveScoresTab />;
   }

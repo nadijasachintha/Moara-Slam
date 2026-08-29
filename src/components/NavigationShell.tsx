@@ -67,16 +67,19 @@ export default function NavigationShell({ children }: NavigationShellProps) {
     setIsLoginOpen(true);
   };
 
-  const navItems = [
+  const baseNavItems = [
     { name: 'Live', tab: 'live' as const, icon: Tv },
     { name: 'Schedule', tab: 'schedule' as const, icon: Calendar },
     { name: 'Results', tab: 'results' as const, icon: Trophy },
-    { name: 'Register', tab: 'register' as const, icon: UserPlus },
   ];
 
   const displayNavItems = isAdmin 
-    ? [...navItems, { name: 'Admin', tab: 'admin' as const, icon: ShieldCheck }]
-    : navItems;
+    ? [
+        ...baseNavItems, 
+        { name: 'Register', tab: 'register' as const, icon: UserPlus },
+        { name: 'Admin', tab: 'admin' as const, icon: ShieldCheck }
+      ]
+    : baseNavItems;
 
   return (
     <div className="min-h-screen bg-[#060e08] text-[#f8fafc] flex flex-col pb-20">
