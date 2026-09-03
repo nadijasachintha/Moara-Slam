@@ -246,8 +246,8 @@ export default function RegisterTab() {
                     onChange={(e) => setTeamCategory(e.target.value as 'boys' | 'girls')}
                     className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#22c55e] focus:outline-none transition-all appearance-none"
                   >
-                    <option value="boys">Boys</option>
-                    <option value="girls">Girls</option>
+                    <option value="boys" className="bg-[#0a160c] text-white">Boys</option>
+                    <option value="girls" className="bg-[#0a160c] text-white">Girls</option>
                   </select>
                 </div>
                 <div>
@@ -257,8 +257,8 @@ export default function RegisterTab() {
                     onChange={(e) => setTeamGroup(e.target.value as 'group_a' | 'group_b')}
                     className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#22c55e] focus:outline-none transition-all appearance-none"
                   >
-                    <option value="group_a">Group A</option>
-                    <option value="group_b">Group B</option>
+                    <option value="group_a" className="bg-[#0a160c] text-white">Group A</option>
+                    <option value="group_b" className="bg-[#0a160c] text-white">Group B</option>
                   </select>
                 </div>
               </div>

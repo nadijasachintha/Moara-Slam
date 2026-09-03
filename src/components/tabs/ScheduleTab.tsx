@@ -708,10 +708,10 @@ export default function ScheduleTab() {
                     onChange={(e) => setNewMatchRound(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
                   >
-                    <option value="group_a">Group A</option>
-                    <option value="group_b">Group B</option>
-                    <option value="semi_finals">Semi Finals</option>
-                    <option value="finals">Finals</option>
+                    <option value="group_a" className="bg-[#0a160c] text-white">Group A</option>
+                    <option value="group_b" className="bg-[#0a160c] text-white">Group B</option>
+                    <option value="semi_finals" className="bg-[#0a160c] text-white">Semi Finals</option>
+                    <option value="finals" className="bg-[#0a160c] text-white">Finals</option>
                   </select>
                 </div>
                 <div>
@@ -721,8 +721,8 @@ export default function ScheduleTab() {
                     onChange={(e) => setNewMatchCategory(e.target.value as 'boys'|'girls')}
                     className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
                   >
-                    <option value="boys">Boys Tournament</option>
-                    <option value="girls">Girls Tournament</option>
+                    <option value="boys" className="bg-[#0a160c] text-white">Boys Tournament</option>
+                    <option value="girls" className="bg-[#0a160c] text-white">Girls Tournament</option>
                   </select>
                 </div>
                 <div>
@@ -732,8 +732,8 @@ export default function ScheduleTab() {
                     onChange={(e) => setNewMatchType(e.target.value as 'single'|'double')}
                     className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
                   >
-                    <option value="single">Single Match</option>
-                    <option value="double">Double Match</option>
+                    <option value="single" className="bg-[#0a160c] text-white">Single Match</option>
+                    <option value="double" className="bg-[#0a160c] text-white">Double Match</option>
                   </select>
                 </div>
               </div>
@@ -747,9 +747,9 @@ export default function ScheduleTab() {
                     onChange={(e) => { setUniA(e.target.value); setTeamA(''); setNewMatchPlayerA(''); setNewMatchPlayerA2(''); }}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                   >
-                    <option value="">Select University</option>
+                    <option value="" className="bg-[#0a160c] text-white">Select University</option>
                     {availableUnis.map(u => (
-                      <option key={u as string} value={u as string}>{u as string}</option>
+                      <option key={u as string} value={u as string} className="bg-[#0a160c] text-white">{u as string}</option>
                     ))}
                   </select>
                   <select
@@ -758,9 +758,9 @@ export default function ScheduleTab() {
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                     disabled={!uniA}
                   >
-                    <option value="">Select Team</option>
+                    <option value="" className="bg-[#0a160c] text-white">Select Team</option>
                     {Array.from(new Set(playersList.filter(p => p.team?.university?.name === uniA).map(p => p.team?.name))).filter(Boolean).map(t => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t} className="bg-[#0a160c] text-white">{t}</option>
                     ))}
                   </select>
                 </div>
@@ -771,9 +771,9 @@ export default function ScheduleTab() {
                     className="w-full bg-black/40 border border-[#22c55e]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                     disabled={!teamA}
                   >
-                    <option value="">Player 1</option>
+                    <option value="" className="bg-[#0a160c] text-white">Player 1</option>
                     {playersList.filter(p => p.team?.name === teamA).map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name}</option>
+                      <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                     ))}
                   </select>
                   {newMatchType === 'double' && (
@@ -783,9 +783,9 @@ export default function ScheduleTab() {
                       className="w-full bg-black/40 border border-[#22c55e]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                       disabled={!teamA}
                     >
-                      <option value="">Player 2</option>
+                      <option value="" className="bg-[#0a160c] text-white">Player 2</option>
                       {playersList.filter(p => p.team?.name === teamA).map(p => (
-                        <option key={p.id} value={p.id}>{p.full_name}</option>
+                        <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                       ))}
                     </select>
                   )}
@@ -801,9 +801,9 @@ export default function ScheduleTab() {
                     onChange={(e) => { setUniB(e.target.value); setTeamB(''); setNewMatchPlayerB(''); setNewMatchPlayerB2(''); }}
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                   >
-                    <option value="">Select University</option>
+                    <option value="" className="bg-[#0a160c] text-white">Select University</option>
                     {availableUnis.map(u => (
-                      <option key={u as string} value={u as string}>{u as string}</option>
+                      <option key={u as string} value={u as string} className="bg-[#0a160c] text-white">{u as string}</option>
                     ))}
                   </select>
                   <select
@@ -812,9 +812,9 @@ export default function ScheduleTab() {
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                     disabled={!uniB}
                   >
-                    <option value="">Select Team</option>
+                    <option value="" className="bg-[#0a160c] text-white">Select Team</option>
                     {Array.from(new Set(playersList.filter(p => p.team?.university?.name === uniB).map(p => p.team?.name))).filter(Boolean).map(t => (
-                      <option key={t} value={t}>{t}</option>
+                      <option key={t} value={t} className="bg-[#0a160c] text-white">{t}</option>
                     ))}
                   </select>
                 </div>
@@ -825,9 +825,9 @@ export default function ScheduleTab() {
                     className="w-full bg-black/40 border border-amber-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                     disabled={!teamB}
                   >
-                    <option value="">Player 1</option>
+                    <option value="" className="bg-[#0a160c] text-white">Player 1</option>
                     {playersList.filter(p => p.team?.name === teamB).map(p => (
-                      <option key={p.id} value={p.id}>{p.full_name}</option>
+                      <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                     ))}
                   </select>
                   {newMatchType === 'double' && (
@@ -837,9 +837,9 @@ export default function ScheduleTab() {
                       className="w-full bg-black/40 border border-amber-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                       disabled={!teamB}
                     >
-                      <option value="">Player 2</option>
+                      <option value="" className="bg-[#0a160c] text-white">Player 2</option>
                       {playersList.filter(p => p.team?.name === teamB).map(p => (
-                        <option key={p.id} value={p.id}>{p.full_name}</option>
+                        <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                       ))}
                     </select>
                   )}
