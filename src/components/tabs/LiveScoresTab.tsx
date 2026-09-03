@@ -334,7 +334,7 @@ export default function LiveScoresTab() {
     return (
       <div 
         key={tableNum}
-        className="relative overflow-hidden bg-slate-900/10 border border-dashed border-white/5 rounded-2xl p-4 flex flex-col justify-between h-52 items-center justify-center space-y-2 opacity-50"
+        className="relative overflow-hidden bg-slate-900/10 border border-dashed border-white/5 rounded-2xl p-4 flex flex-col justify-between h-40 items-center justify-center space-y-2 opacity-50"
       >
         <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-400">
           Board {tableNum}
@@ -359,7 +359,7 @@ export default function LiveScoresTab() {
     return (
       <div 
         key={tableNum} 
-        className="relative overflow-hidden bg-gradient-to-br from-[#1c160a] to-[#241b0b] border border-amber-500/15 rounded-2xl shadow-lg p-4 flex flex-col justify-between h-52 space-y-2 transition-all duration-300"
+        className="relative overflow-hidden bg-gradient-to-br from-[#1c160a] to-[#241b0b] border border-amber-500/15 rounded-2xl shadow-lg p-3 flex flex-col justify-between h-40 space-y-2 transition-all duration-300"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
@@ -427,7 +427,7 @@ export default function LiveScoresTab() {
     return (
       <div 
         key={tableNum} 
-        className="relative overflow-hidden bg-gradient-to-br from-[#0b130e] to-[#0c1811] border border-white/5 rounded-2xl shadow-lg p-4 flex flex-col justify-between h-52 space-y-2 transition-all duration-300"
+        className="relative overflow-hidden bg-gradient-to-br from-[#0b130e] to-[#0c1811] border border-white/5 rounded-2xl shadow-lg p-3 flex flex-col justify-between h-40 space-y-2 transition-all duration-300"
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
@@ -638,7 +638,7 @@ export default function LiveScoresTab() {
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {cards.map(({ tableNum, match, state }) => {
             if (state === 'live') return renderLiveScoreCard(match!, tableNum);
             if (state === 'upcoming') return renderUpcomingScoreCard(match!, tableNum);
