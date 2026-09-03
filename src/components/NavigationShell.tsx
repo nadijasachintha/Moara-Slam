@@ -151,7 +151,7 @@ export default function NavigationShell({ children }: NavigationShellProps) {
       </header>
 
       {/* ── Main Content ── */}
-      <main className="flex-1 w-full max-w-screen-2xl mx-auto p-4 md:p-6">
+      <main className={`flex-1 w-full mx-auto p-4 md:p-6 ${activeTab === 'live' ? 'max-w-screen-2xl' : 'max-w-4xl'}`}>
         {children}
       </main>
 
