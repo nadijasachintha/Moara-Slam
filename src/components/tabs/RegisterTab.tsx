@@ -34,7 +34,6 @@ export default function RegisterTab() {
   
   // Form State
   const [selectedUniId, setSelectedUniId] = useState('');
-  const [manualUniName, setManualUniName] = useState('');
   const [teamName, setTeamName] = useState('');
   const [leaderName, setLeaderName] = useState('');
   const [leaderEmail, setLeaderEmail] = useState('');
@@ -113,7 +112,6 @@ export default function RegisterTab() {
 
   const validateForm = () => {
     if (!selectedUniId) return 'Please select your University.';
-    if (selectedUniId === 'manual' && !manualUniName.trim()) return 'Please type in your University name.';
     if (!teamName.trim()) return 'Please choose a Team Name.';
     if (!leaderEmail.trim()) return 'Please provide your Leader Email.';
     if (players.length === 0) return 'Please register at least one player.';
@@ -145,16 +143,8 @@ export default function RegisterTab() {
     setSubmitting(true);
     setSubmitError('');
     try {
-      let finalUniId = selectedUniId;
-
-      if (selectedUniId === 'manual') {
-        // In demo mode, just use the manual name as the ID
-        // In Supabase mode, server action handles it via submitReg
-        finalUniId = 'manual_' + manualUniName.trim();
-      }
-
       await submitReg({
-        universityId: finalUniId,
+        universityId: selectedUniId,
         teamName: teamName.trim(),
         leaderName: leaderName.trim(),
         leaderEmail: leaderEmail.trim(),
@@ -174,7 +164,6 @@ export default function RegisterTab() {
   };
 
   const getUniDisplay = () => {
-    if (selectedUniId === 'manual') return manualUniName || 'Manual Entry';
     const found = universities.find((u) => u.id === selectedUniId);
     return found ? found.name : 'Choose University';
   };
@@ -228,19 +217,7 @@ export default function RegisterTab() {
                         {uni.name}
                       </option>
                     ))}
-                    <option value="manual" className="bg-[#0a160c] text-white">Other (Type manually)</option>
                   </select>
-
-                {selectedUniId === 'manual' && (
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter University name"
-                    value={manualUniName}
-                    onChange={(e) => setManualUniName(e.target.value)}
-                    className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#22c55e] focus:outline-none transition-all mt-2"
-                  />
-                )}
               </div>
 
               {/* Team Name */}
@@ -515,7 +492,6 @@ export default function RegisterTab() {
               <button
                 onClick={() => {
                   setTeamName('');
-                  setManualUniName('');
                   setSelectedUniId('');
                   setLeaderEmail('');
                   setLeaderName('');

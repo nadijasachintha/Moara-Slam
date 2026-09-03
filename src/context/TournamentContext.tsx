@@ -460,7 +460,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
     if (!isAdmin) throw new Error('Unauthorized');
     const res = await createManualMatch({ ...payload, adminEmail });
-    if (res.success) {
+    if (res && res.success) {
       const mData = await getMatches();
       setMatches(mData);
     }
@@ -739,7 +739,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         submitReg,
         approveReg,
         rejectReg,
-        generateDraw,
+        createMatch,
+        getPlayers,
         startM,
         pauseM,
         resumeM,
