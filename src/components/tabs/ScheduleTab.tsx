@@ -72,9 +72,9 @@ export default function ScheduleTab() {
       const localTimeString = new Date(localDate.getTime() - tzOffset).toISOString().slice(11, 16);
       setNewMatchTime(localTimeString);
       
-      // Select first available valid table (not live)
+      // Select first available valid board (not live)
       const liveTables = matches.filter(m => m.status === 'live').map(m => m.table_number);
-      const availableTables = Array.from({length: 10}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
+      const availableTables = Array.from({length: 16}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
       setNewMatchTable(availableTables.length > 0 ? availableTables[0] : 1);
       
     } catch (err: any) {
@@ -297,7 +297,7 @@ export default function ScheduleTab() {
         <div className="flex items-center justify-between border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
-              Table {match.table_number}
+              Board {match.table_number}
             </span>
             <span className={`text-[9px] font-extrabold uppercase tracking-widest px-2 py-0.5 rounded-full flex items-center gap-1 ${
               match.status === 'live'
@@ -484,7 +484,7 @@ export default function ScheduleTab() {
                         >
                           {/* Round Match Metadata */}
                           <div className="flex justify-between items-center text-[9px] text-slate-500 font-bold border-b border-white/5 pb-1">
-                            <span>T-{m.table_number}</span>
+                            <span>B-{m.table_number}</span>
                             <span>{new Date(m.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
 
@@ -567,7 +567,7 @@ export default function ScheduleTab() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Assign Table Number</label>
+                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Assign Board Number</label>
                 <input
                   type="number"
                   min="1"
@@ -849,7 +849,7 @@ export default function ScheduleTab() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Table Number</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Board Number</label>
                   <select
                     value={newMatchTable}
                     onChange={(e) => setNewMatchTable(parseInt(e.target.value))}
@@ -859,7 +859,7 @@ export default function ScheduleTab() {
                       const isLive = matches.some(m => m.status === 'live' && m.table_number === t);
                       return (
                         <option key={t} value={t} disabled={isLive}>
-                          Table {t} {isLive ? '(In Use)' : ''}
+                          Board {t} {isLive ? '(In Use)' : ''}
                         </option>
                       );
                     })}

@@ -298,7 +298,7 @@ export default function LiveScoresTab() {
   };
 
   // Compile exact list of 15 tables
-  const tableNumbers = Array.from({ length: 15 }, (_, i) => i + 1);
+  const tableNumbers = Array.from({ length: 16 }, (_, i) => i + 1);
 
   const cards = tableNumbers.map((tableNum) => {
     const tableMatches = matches.filter(m => m.table_number === tableNum);
@@ -337,10 +337,10 @@ export default function LiveScoresTab() {
         className="relative overflow-hidden bg-slate-900/10 border border-dashed border-white/5 rounded-2xl p-4 flex flex-col justify-between h-40 items-center justify-center space-y-2 opacity-50"
       >
         <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-400">
-          Table {tableNum}
+          Board {tableNum}
         </span>
         <div className="space-y-1 text-center">
-          <h4 className="font-extrabold text-slate-500 text-sm">Table Idle</h4>
+          <h4 className="font-extrabold text-slate-500 text-sm">Board Idle</h4>
           <p className="text-[9px] text-slate-600 uppercase tracking-wider">No Match Assigned</p>
         </div>
       </div>
@@ -365,7 +365,7 @@ export default function LiveScoresTab() {
         <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
-              Table {tableNum}
+              Board {tableNum}
             </span>
             <span className="text-[9px] font-extrabold uppercase tracking-widest bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
               Scheduled
@@ -433,7 +433,7 @@ export default function LiveScoresTab() {
         <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
-              Table {tableNum}
+              Board {tableNum}
             </span>
             <span className="text-[9px] font-extrabold uppercase tracking-widest bg-white/10 text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1">
               <Trophy className="w-2.5 h-2.5 text-[#f5a623]" />
@@ -525,7 +525,7 @@ export default function LiveScoresTab() {
         <div className="flex items-center justify-between border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
-              Table {tableNum}
+              Board {tableNum}
             </span>
             <span className="text-[9px] font-extrabold uppercase tracking-widest bg-emerald-500 text-slate-950 px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
               <span className="w-1 h-1 bg-slate-950 rounded-full"></span>
@@ -634,11 +634,11 @@ export default function LiveScoresTab() {
             </h3>
           </div>
           <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider bg-white/5 px-3 py-1 rounded-full border border-white/5">
-            15 Hall Tables
+            16 Hall Boards
           </span>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 2xl:grid-cols-8 gap-3">
           {cards.map(({ tableNum, match, state }) => {
             if (state === 'live') return renderLiveScoreCard(match!, tableNum);
             if (state === 'upcoming') return renderUpcomingScoreCard(match!, tableNum);

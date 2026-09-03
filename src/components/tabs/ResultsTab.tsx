@@ -114,7 +114,7 @@ export default function ResultsTab() {
         <div className="flex items-center justify-between border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
-              Table {match.table_number}
+              Board {match.table_number}
             </span>
             <span className="text-[9px] font-extrabold uppercase tracking-widest bg-white/10 text-slate-400 px-2 py-0.5 rounded-full flex items-center gap-1">
               <Trophy className="w-2.5 h-2.5 text-[#f5a623]" />

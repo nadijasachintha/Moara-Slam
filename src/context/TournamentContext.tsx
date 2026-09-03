@@ -98,7 +98,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
   const [settings, setSettings] = useState<TournamentSettings>({
     id: 'default',
     start_time: '09:00:00',
-    tables_count: 10,
+    tables_count: 16,
     break_duration_minutes: 10,
     match_duration_minutes: 45,
     created_at: new Date().toISOString()
