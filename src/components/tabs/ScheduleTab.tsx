@@ -623,6 +623,7 @@ export default function ScheduleTab() {
             </div>
           </div>
         </div>
+      )}
       {/* CREATE MATCH MODAL */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
