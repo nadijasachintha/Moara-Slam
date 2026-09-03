@@ -224,7 +224,7 @@ export default function ScheduleTab() {
       return (
         <div 
           key={match.id}
-          className="relative overflow-hidden bg-gradient-to-br from-[#0c1f0f] to-[#0f2d17] border border-[#22c55e]/15 rounded-2xl p-4 flex flex-col justify-between h-40 opacity-75"
+          className="relative overflow-hidden bg-gradient-to-br from-[#0c1f0f] to-[#0f2d17] border border-[#22c55e]/15 rounded-2xl p-4 flex flex-col justify-between h-52 opacity-75"
         >
           <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-400">
@@ -253,7 +253,7 @@ export default function ScheduleTab() {
       return (
         <div 
           key={match.id}
-          className="relative overflow-hidden bg-slate-900/20 border border-white/5 rounded-2xl p-4 flex flex-col justify-between h-40 opacity-60"
+          className="relative overflow-hidden bg-slate-900/20 border border-white/5 rounded-2xl p-4 flex flex-col justify-between h-52 opacity-60"
         >
           <div className="flex items-center justify-between border-b border-white/5 pb-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-400">
