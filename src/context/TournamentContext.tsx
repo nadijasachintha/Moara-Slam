@@ -15,7 +15,8 @@ import {
   submitRegistration,
   approveRegistration,
   rejectRegistration,
-  generateScheduleAndBrackets,
+  getApprovedPlayers,
+  createManualMatch,
   getPendingRegistrations,
   getUniversities
 } from '@/app/actions';
@@ -38,7 +39,8 @@ interface TournamentContextType {
   submitReg: (payload: any) => Promise<any>;
   approveReg: (regId: string) => Promise<void>;
   rejectReg: (regId: string) => Promise<void>;
-  generateDraw: () => Promise<void>;
+  createMatch: (payload: any) => Promise<void>;
+  getPlayers: () => Promise<any[]>;
   startM: (matchId: string) => Promise<void>;
   pauseM: (matchId: string) => Promise<void>;
   resumeM: (matchId: string) => Promise<void>;
@@ -451,219 +453,24 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
   };
 
-  const generateDraw = async () => {
-    if (!isDemoMode) {
-      await generateScheduleAndBrackets(adminEmail);
+  const createMatch = async (payload: any) => {
+    if (isDemoMode) {
+      alert('Cannot create manual match in demo mode.');
       return;
     }
-
-    // Demo Mode Bracket Generator
-    const approved = registrations.filter(r => r.status === 'approved');
-    if (approved.length < 2) {
-      throw new Error('At least 2 approved players are needed to generate tournament matches.');
+    if (!isAdmin) throw new Error('Unauthorized');
+    const res = await createManualMatch({ ...payload, adminEmail });
+    if (res.success) {
+      await fetchMatches();
     }
-
-    // Gather players
-    const allPlayers: Player[] = [];
-    approved.forEach(reg => {
-      if (reg.team?.players) {
-        reg.team.players.forEach((p: any) => {
-          allPlayers.push({
-            ...p,
-            team: reg.team
-          });
-        });
-      }
-    });
-
-    if (allPlayers.length < 2) {
-      throw new Error('No registered players found.');
-    }
-
-    const N = allPlayers.length;
-    let M = 2;
-    while (M < N) M *= 2;
-
-    // Place byes and players optimally to ensure minimum byes and no bye-bye pairings
-    const drawSlots: (Player | null)[] = Array(M).fill(null);
-    const totalMatchesCount = M / 2;
-    const numPlayedMatches = N - totalMatchesCount;
-    const matchTypes: ('played' | 'bye')[] = Array(totalMatchesCount).fill('bye');
-
-    if (numPlayedMatches > 0) {
-      const step = totalMatchesCount / numPlayedMatches;
-      for (let i = 0; i < numPlayedMatches; i++) {
-        const idx = Math.floor(i * step);
-        matchTypes[idx] = 'played';
-      }
-    }
-
-    let playerIdx = 0;
-    for (let i = 0; i < totalMatchesCount; i++) {
-      if (matchTypes[i] === 'played') {
-        drawSlots[i * 2] = allPlayers[playerIdx++];
-        drawSlots[i * 2 + 1] = allPlayers[playerIdx++];
-      } else {
-        drawSlots[i * 2] = allPlayers[playerIdx++];
-        drawSlots[i * 2 + 1] = null;
-      }
-    }
-
-    // Build rounds lists
-    const roundsList: { roundName: string; matchesCount: number }[] = [];
-    let tempM = M;
-    while (tempM >= 2) {
-      const count = tempM / 2;
-      let name = '';
-      if (tempM === 2) name = 'finals';
-      else if (tempM === 4) name = 'semi_finals';
-      else if (tempM === 8) name = 'quarter_finals';
-      else if (tempM === 16) name = 'round_of_16';
-      else name = `round_of_${tempM}`;
-      roundsList.unshift({ roundName: name, matchesCount: count });
-      tempM /= 2;
-    }
-
-    const localMatchesList: Match[] = [];
-    const createdMap: { [key: string]: string } = {};
-
-    const startDayTime = new Date();
-    const slotDuration = settings.match_duration_minutes + settings.break_duration_minutes;
-
-    for (let rIndex = 0; rIndex < roundsList.length; rIndex++) {
-      const roundName = roundsList[rIndex].roundName;
-      const count = roundsList[rIndex].matchesCount;
-      const isFirst = rIndex === roundsList.length - 1;
-
-      for (let mIndex = 0; mIndex < count; mIndex++) {
-        const parentMatchId = rIndex > 0 ? createdMap[`${roundsList[rIndex - 1].roundName}_${Math.floor(mIndex / 2)}`] : null;
-        const parentSlot = rIndex > 0 ? (mIndex % 2 === 0 ? 'A' : 'B') : null;
-
-        let pA = isFirst ? drawSlots[mIndex * 2] : null;
-        let pB = isFirst ? drawSlots[mIndex * 2 + 1] : null;
-
-        const matchId = `match_${Math.random().toString(36).substr(2, 9)}`;
-
-        const newMatch: Match = {
-          id: matchId,
-          player_a_id: pA?.id || null,
-          player_b_id: pB?.id || null,
-          winner_id: null,
-          table_number: 0, // placeholder
-          scheduled_time: startDayTime.toISOString(), // placeholder
-          status: 'scheduled',
-          score_a: 0,
-          score_b: 0,
-          current_frame: 1,
-          match_start_time: null,
-          total_duration_minutes: settings.match_duration_minutes,
-          paused_at_timestamp: null,
-          pause_duration_seconds: 0,
-          is_paused: false,
-          round: roundName,
-          stage_index: rIndex + 1,
-          next_match_id: parentMatchId,
-          next_match_player_slot: parentSlot,
-          created_at: new Date().toISOString(),
-          player_a: pA || undefined,
-          player_b: pB || undefined
-        };
-
-        localMatchesList.push(newMatch);
-        createdMap[`${roundName}_${mIndex}`] = matchId;
-      }
-    }
-
-    // Auto resolve byes in memory first
-    localMatchesList.forEach(m => {
-      const isFirst = m.stage_index === roundsList.length;
-      if (isFirst && (m.player_a_id === null || m.player_b_id === null)) {
-        const winnerId = m.player_a_id || m.player_b_id;
-        if (winnerId) {
-          m.status = 'finished';
-          m.winner_id = winnerId;
-          m.score_a = 0;
-          m.score_b = 0;
-          m.table_number = 0; // Bye match has no table
-
-          // Propagate
-          if (m.next_match_id && m.next_match_player_slot) {
-            const parent = localMatchesList.find(pm => pm.id === m.next_match_id);
-            if (parent) {
-              const winnerPlayer = m.player_a_id ? m.player_a : m.player_b;
-              if (m.next_match_player_slot === 'A') {
-                parent.player_a_id = winnerId;
-                parent.player_a = winnerPlayer;
-              } else {
-                parent.player_b_id = winnerId;
-                parent.player_b = winnerPlayer;
-              }
-            }
-          }
-        }
-      }
-    });
-
-    // Compute dependency minSlots for every match
-    const minSlotMap: { [matchId: string]: number } = {};
-
-    for (let rIndex = roundsList.length - 1; rIndex >= 0; rIndex--) {
-      const roundName = roundsList[rIndex].roundName;
-      const count = roundsList[rIndex].matchesCount;
-      const isFirst = rIndex === roundsList.length - 1;
-
-      for (let mIndex = 0; mIndex < count; mIndex++) {
-        const matchObj = localMatchesList.find(m => m.round === roundName && (createdMap[`${roundName}_${mIndex}`] === m.id));
-        const matchId = matchObj!.id;
-
-        if (isFirst) {
-          if (matchObj!.player_a_id === null || matchObj!.player_b_id === null) {
-            minSlotMap[matchId] = -1; // bye match
-          } else {
-            minSlotMap[matchId] = 0; // played match in slot 0
-          }
-        } else {
-          const childA = localMatchesList.find(c => c.next_match_id === matchId && c.next_match_player_slot === 'A');
-          const childB = localMatchesList.find(c => c.next_match_id === matchId && c.next_match_player_slot === 'B');
-
-          const slotA = childA ? minSlotMap[childA.id] : -1;
-          const slotB = childB ? minSlotMap[childB.id] : -1;
-
-          minSlotMap[matchId] = Math.max(slotA, slotB) + 1;
-        }
-      }
-    }
-
-    // Schedule played matches dynamically using greedy scheduler
-    const playedMatches = localMatchesList.filter(m => minSlotMap[m.id] >= 0);
-    playedMatches.sort((a, b) => minSlotMap[a.id] - minSlotMap[b.id]);
-
-    let currentSlot = 0;
-    let unscheduled = [...playedMatches];
-
-    while (unscheduled.length > 0) {
-      const ready = unscheduled.filter(m => minSlotMap[m.id] <= currentSlot);
-
-      if (ready.length === 0) {
-        currentSlot++;
-        continue;
-      }
-
-      const toSchedule = ready.slice(0, settings.tables_count);
-
-      toSchedule.forEach((m, idx) => {
-        m.table_number = idx + 1;
-        m.scheduled_time = new Date(startDayTime.getTime() + currentSlot * slotDuration * 60 * 1000).toISOString();
-        unscheduled = unscheduled.filter(u => u.id !== m.id);
-      });
-
-      currentSlot++;
-    }
-
-    setMatches(localMatchesList);
-    saveDemoState('matches', localMatchesList);
-    addDemoAudit('GENERATE_SCHEDULE', { matchesGenerated: playedMatches.length });
   };
+
+  const getPlayers = async () => {
+    if (isDemoMode) return DEFAULT_PLAYERS;
+    return await getApprovedPlayers();
+  };
+
+
 
   const startM = async (matchId: string) => {
     // 1. Optimistic local update

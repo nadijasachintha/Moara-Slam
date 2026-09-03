@@ -210,26 +210,107 @@ export default function ResultsTab() {
     );
   };
 
+  // Calculate Group Standings
+  const groupAStandings: Record<string, any> = {};
+  const groupBStandings: Record<string, any> = {};
+
+  matches.forEach(m => {
+    if (m.round === 'group_a' || m.round === 'group_b') {
+      const isGroupA = m.round === 'group_a';
+      const target = isGroupA ? groupAStandings : groupBStandings;
+      
+      const pA = m.player_a;
+      const pB = m.player_b;
+      
+      if (pA && !target[pA.id]) target[pA.id] = { id: pA.id, played: 0, wins: 0, points: 0, teamName: pA.full_name, uniName: (pA.team as any)?.university?.name || 'N/A' };
+      if (pB && !target[pB.id]) target[pB.id] = { id: pB.id, played: 0, wins: 0, points: 0, teamName: pB.full_name, uniName: (pB.team as any)?.university?.name || 'N/A' };
+
+      if (m.status === 'finished' && m.winner_id) {
+         if (pA) target[pA.id].played += 1;
+         if (pB) target[pB.id].played += 1;
+         
+         if (target[m.winner_id]) {
+           target[m.winner_id].wins += 1;
+           target[m.winner_id].points += 1;
+         }
+      }
+    }
+  });
+
+  const sortedGroupA = Object.values(groupAStandings).sort((a, b) => b.points - a.points);
+  const sortedGroupB = Object.values(groupBStandings).sort((a, b) => b.points - a.points);
+
+  const renderStandingsTable = (title: string, data: any[]) => (
+    <div className="glass-panel border border-white/5 rounded-3xl overflow-hidden mb-6">
+      <div className="bg-white/5 px-6 py-4 border-b border-white/5">
+        <h3 className="text-sm font-extrabold text-white flex items-center gap-2 tracking-wider">
+          <Trophy className="w-4 h-4 text-[#22c55e]" /> {title} Standings
+        </h3>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[500px]">
+          <thead>
+            <tr className="bg-slate-950/40 text-[10px] uppercase tracking-widest text-slate-400 font-extrabold">
+              <th className="px-6 py-3 border-b border-white/5">Rank</th>
+              <th className="px-6 py-3 border-b border-white/5">Team / Player</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Played</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Wins</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Points</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {data.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-xs text-slate-500">No teams have played in this group yet.</td>
+              </tr>
+            ) : (
+              data.map((team, idx) => (
+                <tr key={team.id} className="hover:bg-white/5 transition-colors">
+                  <td className="px-6 py-4 text-xs font-bold text-slate-400">#{idx + 1}</td>
+                  <td className="px-6 py-4">
+                    <div className="font-extrabold text-white text-sm">{team.teamName}</div>
+                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">{team.uniName}</div>
+                  </td>
+                  <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.played}</td>
+                  <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.wins}</td>
+                  <td className="px-6 py-4 text-center text-lg font-black text-[#22c55e]">{team.points}</td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
         <h2 className="text-xl font-extrabold text-white">Championship Results</h2>
-        <p className="text-xs text-slate-400 mt-0.5">Explore completed matchups, final scores, and brackets progression.</p>
+        <p className="text-xs text-slate-400 mt-0.5">Explore group standings, knockouts, and completed matchups.</p>
       </div>
 
-      {/* Bracket View */}
-      {matches.length > 0 && (
-        <div className="mt-4">
+      {/* Group Standings */}
+      {(sortedGroupA.length > 0 || sortedGroupB.length > 0) && (
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
+          {sortedGroupA.length > 0 && renderStandingsTable('Group A', sortedGroupA)}
+          {sortedGroupB.length > 0 && renderStandingsTable('Group B', sortedGroupB)}
+        </div>
+      )}
+
+      {/* Bracket View (Only Knockout Matches) */}
+      {matches.some(m => m.round === 'semi_finals' || m.round === 'finals') && (
+        <div className="mt-8">
           <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
-            <Trophy className="w-4 h-4 text-[#22c55e]" /> Live Bracket
+            <Trophy className="w-4 h-4 text-amber-400" /> Knockout Stage Bracket
           </h3>
-          <TournamentBracket matches={matches} />
+          <TournamentBracket matches={matches.filter(m => m.round === 'semi_finals' || m.round === 'finals')} />
         </div>
       )}
 
       {/* Completed Matches List */}
-      <h3 className="text-sm font-bold text-slate-300 mb-3 mt-6">Completed Matches</h3>
+      <h3 className="text-sm font-bold text-slate-300 mb-3 mt-8">Recent Completed Matches</h3>
       {finishedMatches.length === 0 ? (
         <div className="glass-panel border-dashed border-white/10 rounded-3xl p-10 text-center max-w-lg mx-auto space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-400">

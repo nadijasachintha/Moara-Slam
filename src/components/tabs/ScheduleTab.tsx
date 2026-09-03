@@ -18,13 +18,13 @@ export default function ScheduleTab() {
   const { 
     matches, 
     isAdmin, 
-    generateDraw, 
+    createMatch, 
+    getPlayers,
     reschedule, 
     startM, 
     overrideSlot 
   } = useTournament();
 
-  const [generatingDraw, setGeneratingDraw] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'bracket'>('list');
 
   // Rescheduling State
@@ -39,17 +39,57 @@ export default function ScheduleTab() {
   const [overridePlayerId, setOverridePlayerId] = useState('');
   const [savingOverride, setSavingOverride] = useState(false);
 
-  const handleGenerateDraw = async () => {
-    if (!confirm('This will wipe out all existing matches and generate a fresh knockout bracket. Proceed?')) {
+  // Manual Match Creation State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [creatingMatch, setCreatingMatch] = useState(false);
+  const [playersList, setPlayersList] = useState<any[]>([]);
+  const [newMatchRound, setNewMatchRound] = useState('group_a');
+  const [newMatchPlayerA, setNewMatchPlayerA] = useState('');
+  const [newMatchPlayerB, setNewMatchPlayerB] = useState('');
+  const [newMatchTable, setNewMatchTable] = useState(1);
+  const [newMatchTime, setNewMatchTime] = useState('');
+
+  // Load players when opening create modal
+  const handleOpenCreateModal = async () => {
+    try {
+      const p = await getPlayers();
+      setPlayersList(p);
+      setShowCreateModal(true);
+      // Set default time to now
+      const localDate = new Date();
+      const tzOffset = localDate.getTimezoneOffset() * 60000;
+      const localISOTime = new Date(localDate.getTime() - tzOffset).toISOString().slice(0, 16);
+      setNewMatchTime(localISOTime);
+    } catch (err: any) {
+      alert('Error fetching players: ' + err.message);
+    }
+  };
+
+  const handleCreateMatch = async () => {
+    if (!newMatchPlayerA || !newMatchPlayerB) {
+      alert('Please select both players/teams');
       return;
     }
-    setGeneratingDraw(true);
+    if (newMatchPlayerA === newMatchPlayerB) {
+      alert('Player A and Player B cannot be the same');
+      return;
+    }
+    setCreatingMatch(true);
     try {
-      await generateDraw();
+      await createMatch({
+        round: newMatchRound,
+        playerAId: newMatchPlayerA,
+        playerBId: newMatchPlayerB,
+        tableNumber: newMatchTable,
+        scheduledTime: new Date(newMatchTime).toISOString()
+      });
+      setShowCreateModal(false);
+      setNewMatchPlayerA('');
+      setNewMatchPlayerB('');
     } catch (err: any) {
-      alert(err.message || 'Error generating schedule');
+      alert(err.message || 'Error creating match');
     } finally {
-      setGeneratingDraw(false);
+      setCreatingMatch(false);
     }
   };
 
@@ -319,43 +359,17 @@ export default function ScheduleTab() {
         </div>
       </div>
 
-      {/* Generate Draw Setup Panel */}
-      {matches.length === 0 && (
-        <div className="glass-panel rounded-3xl p-6 text-center border-dashed border-white/10 max-w-lg mx-auto space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-[#22c55e]/10 border border-[#22c55e]/20 flex items-center justify-center mx-auto">
-            <Shuffle className="w-6 h-6 text-[#22c55e] animate-pulse" />
-          </div>
-          <div className="space-y-1.5">
-            <h3 className="font-bold text-white text-base">Generate Tournament Draw</h3>
-            <p className="text-xs text-slate-400">
-              No matches have been generated yet. Seeding groups all approved teams, handles byes, separates teammates, and builds the single elimination brackets.
-            </p>
-          </div>
-
-          {isAdmin ? (
-            <button
-              onClick={handleGenerateDraw}
-              disabled={generatingDraw}
-              className="bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#22c55e]/90 hover:to-[#16a34a]/90 text-slate-950 font-extrabold text-xs px-6 py-3 rounded-xl transition-all shadow-[0_0_15px_rgba(0,242,254,0.25)] hover:scale-105 inline-flex items-center gap-1.5"
-            >
-              {generatingDraw ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Generating...
-                </>
-              ) : (
-                <>
-                  <Shuffle className="w-4 h-4" /> Seed & Generate Draw
-                </>
-              )}
-            </button>
-          ) : (
-            <div className="text-xs text-[#f59e0b] font-medium bg-amber-500/10 border border-amber-500/20 p-3 rounded-xl inline-block">
-              Please log in as an administrator to generate the tournament draw.
-            </div>
-          )}
+      {/* Admin Actions */}
+      {isAdmin && (
+        <div className="flex justify-end">
+          <button
+            onClick={handleOpenCreateModal}
+            className="bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#22c55e]/90 hover:to-[#16a34a]/90 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(0,242,254,0.15)] flex items-center gap-1.5"
+          >
+            <Calendar className="w-4 h-4" /> Create Match Manually
+          </button>
         </div>
       )}
-
       {/* VIEW MODE: CHRONOLOGICAL LIST */}
       {viewMode === 'list' && matches.length > 0 && (
         <div className="space-y-8">
@@ -604,6 +618,111 @@ export default function ScheduleTab() {
                   ) : (
                     'Apply Override'
                   )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      {/* CREATE MATCH MODAL */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-lg glass-panel rounded-3xl p-6 border border-white/10 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-3">
+              <h3 className="text-lg font-extrabold text-white flex items-center gap-2">
+                <Calendar className="w-5 h-5 text-[#22c55e]" /> Create Match
+              </h3>
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Tournament Round / Stage</label>
+                <select
+                  value={newMatchRound}
+                  onChange={(e) => setNewMatchRound(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
+                >
+                  <option value="group_a">Group A</option>
+                  <option value="group_b">Group B</option>
+                  <option value="semi_finals">Semi Finals</option>
+                  <option value="finals">Finals</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Competitor A</label>
+                  <select
+                    value={newMatchPlayerA}
+                    onChange={(e) => setNewMatchPlayerA(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                  >
+                    <option value="">Select Team / Player</option>
+                    {playersList.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.team?.university?.name ? `${p.team.university.name} - ${p.full_name}` : p.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Competitor B</label>
+                  <select
+                    value={newMatchPlayerB}
+                    onChange={(e) => setNewMatchPlayerB(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                  >
+                    <option value="">Select Team / Player</option>
+                    {playersList.map(p => (
+                      <option key={p.id} value={p.id}>
+                        {p.team?.university?.name ? `${p.team.university.name} - ${p.full_name}` : p.full_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Table Number</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={newMatchTable}
+                    onChange={(e) => setNewMatchTable(parseInt(e.target.value))}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Scheduled Time</label>
+                  <input
+                    type="datetime-local"
+                    value={newMatchTime}
+                    onChange={(e) => setNewMatchTime(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all color-scheme-dark"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-white/5">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-xl py-3 text-sm font-semibold transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateMatch}
+                  disabled={creatingMatch}
+                  className="flex-1 bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#22c55e]/90 hover:to-[#16a34a]/90 text-slate-950 rounded-xl py-3 text-sm font-bold transition-all flex items-center justify-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.3)]"
+                >
+                  {creatingMatch ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Match'}
                 </button>
               </div>
             </div>
