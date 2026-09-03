@@ -683,20 +683,21 @@ export default function ScheduleTab() {
               </button>
             </div>
             
-            {/* Compute visible universities based on round */}
+            {/* Compute visible universities based on round and category */}
             {(() => {
               const isGroupA = newMatchRound === 'group_a';
               const isGroupB = newMatchRound === 'group_b';
-              const checkUni = (name: string) => {
-                const n = name.toLowerCase();
-                if (isGroupA) return n.includes('moratuwa') || n.includes('colombo') || n.includes('japura') || n.includes('iit') || n.includes('sri jayewardenepura');
-                if (isGroupB) return n.includes('kelaniya') || n.includes('sliit') || n.includes('sabaragamuwa') || n.includes('ruhuna');
-                return true;
-              };
               
-              const availableUnis = Array.from(new Set(playersList.map(p => p.team?.university?.name)))
-                                        .filter(Boolean)
-                                        .filter(name => checkUni(name as string));
+              const filteredPlayers = playersList.filter(p => {
+                const t = p.team;
+                if (!t) return false;
+                if (t.category !== newMatchCategory) return false;
+                if (isGroupA && t.group_name !== 'group_a') return false;
+                if (isGroupB && t.group_name !== 'group_b') return false;
+                return true;
+              });
+              
+              const availableUnis = Array.from(new Set(filteredPlayers.map(p => p.team?.university?.name))).filter(Boolean);
 
               return (
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
@@ -759,7 +760,7 @@ export default function ScheduleTab() {
                     disabled={!uniA}
                   >
                     <option value="" className="bg-[#0a160c] text-white">Select Team</option>
-                    {Array.from(new Set(playersList.filter(p => p.team?.university?.name === uniA).map(p => p.team?.name))).filter(Boolean).map(t => (
+                    {Array.from(new Set(filteredPlayers.filter(p => p.team?.university?.name === uniA).map(p => p.team?.name))).filter(Boolean).map(t => (
                       <option key={t} value={t} className="bg-[#0a160c] text-white">{t}</option>
                     ))}
                   </select>
@@ -772,7 +773,7 @@ export default function ScheduleTab() {
                     disabled={!teamA}
                   >
                     <option value="" className="bg-[#0a160c] text-white">Player 1</option>
-                    {playersList.filter(p => p.team?.name === teamA).map(p => (
+                    {filteredPlayers.filter(p => p.team?.name === teamA).map(p => (
                       <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                     ))}
                   </select>
@@ -784,7 +785,7 @@ export default function ScheduleTab() {
                       disabled={!teamA}
                     >
                       <option value="" className="bg-[#0a160c] text-white">Player 2</option>
-                      {playersList.filter(p => p.team?.name === teamA).map(p => (
+                      {filteredPlayers.filter(p => p.team?.name === teamA).map(p => (
                         <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                       ))}
                     </select>
@@ -813,7 +814,7 @@ export default function ScheduleTab() {
                     disabled={!uniB}
                   >
                     <option value="" className="bg-[#0a160c] text-white">Select Team</option>
-                    {Array.from(new Set(playersList.filter(p => p.team?.university?.name === uniB).map(p => p.team?.name))).filter(Boolean).map(t => (
+                    {Array.from(new Set(filteredPlayers.filter(p => p.team?.university?.name === uniB).map(p => p.team?.name))).filter(Boolean).map(t => (
                       <option key={t} value={t} className="bg-[#0a160c] text-white">{t}</option>
                     ))}
                   </select>
@@ -826,7 +827,7 @@ export default function ScheduleTab() {
                     disabled={!teamB}
                   >
                     <option value="" className="bg-[#0a160c] text-white">Player 1</option>
-                    {playersList.filter(p => p.team?.name === teamB).map(p => (
+                    {filteredPlayers.filter(p => p.team?.name === teamB).map(p => (
                       <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                     ))}
                   </select>
@@ -838,7 +839,7 @@ export default function ScheduleTab() {
                       disabled={!teamB}
                     >
                       <option value="" className="bg-[#0a160c] text-white">Player 2</option>
-                      {playersList.filter(p => p.team?.name === teamB).map(p => (
+                      {filteredPlayers.filter(p => p.team?.name === teamB).map(p => (
                         <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                       ))}
                     </select>

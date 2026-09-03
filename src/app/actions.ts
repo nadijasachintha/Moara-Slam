@@ -423,7 +423,7 @@ export async function getApprovedPlayers() {
 
   const { data: players, error: playersError } = await adminClient
     .from('players')
-    .select('id, full_name, team_id, teams(name, university_id, universities(name))')
+    .select('id, full_name, team_id, teams(name, category, group_name, university_id, universities(name))')
     .in('team_id', teamIds);
 
   if (playersError) throw new Error(playersError.message);
