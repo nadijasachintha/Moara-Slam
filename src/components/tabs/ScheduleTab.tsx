@@ -44,6 +44,7 @@ export default function ScheduleTab() {
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [playersList, setPlayersList] = useState<any[]>([]);
   const [newMatchRound, setNewMatchRound] = useState('group_a');
+  const [newMatchCategory, setNewMatchCategory] = useState<'boys' | 'girls'>('boys');
   
   const [newMatchType, setNewMatchType] = useState<'single' | 'double'>('single');
   const [uniA, setUniA] = useState('');
@@ -103,6 +104,7 @@ export default function ScheduleTab() {
 
       await createMatch({
         round: newMatchRound,
+        category: newMatchCategory,
         matchType: newMatchType,
         playerAId: newMatchPlayerA,
         playerA2Id: newMatchType === 'double' ? newMatchPlayerA2 : null,
@@ -710,6 +712,17 @@ export default function ScheduleTab() {
                     <option value="group_b">Group B</option>
                     <option value="semi_finals">Semi Finals</option>
                     <option value="finals">Finals</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Gender Category</label>
+                  <select
+                    value={newMatchCategory}
+                    onChange={(e) => setNewMatchCategory(e.target.value as 'boys'|'girls')}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
+                  >
+                    <option value="boys">Boys Tournament</option>
+                    <option value="girls">Girls Tournament</option>
                   </select>
                 </div>
                 <div>

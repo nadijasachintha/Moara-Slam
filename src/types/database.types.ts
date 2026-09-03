@@ -36,6 +36,7 @@ export interface Registration {
 
 export interface Match {
   id: string;
+  category: 'boys' | 'girls';
   match_type: 'single' | 'double';
   player_a_id: string | null;
   player_a2_id: string | null;

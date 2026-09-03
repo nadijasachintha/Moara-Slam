@@ -427,6 +427,7 @@ export async function getApprovedPlayers() {
 
 export async function createManualMatch(payload: {
   round: string;
+  category: 'boys' | 'girls';
   matchType: 'single' | 'double';
   playerAId: string | null;
   playerA2Id?: string | null;
@@ -446,6 +447,7 @@ export async function createManualMatch(payload: {
 
   const { error } = await adminClient.from('matches').insert({
     id: crypto.randomUUID(),
+    category: payload.category,
     match_type: payload.matchType,
     player_a_id: payload.playerAId,
     player_a2_id: payload.playerA2Id || null,

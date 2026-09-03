@@ -15,6 +15,7 @@ export default function ResultsTab() {
   const { matches } = useTournament();
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
+  const [activeCategory, setActiveCategory] = useState<'boys' | 'girls'>('boys');
 
   const toggleExpand = (matchId: string) => {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
@@ -223,8 +224,11 @@ export default function ResultsTab() {
   const groupBStandings: Record<string, any> = {};
 
   const encounters: Record<string, { teamAId: string, teamBId: string, teamAName: string, teamBName: string, teamAUni: string, teamBUni: string, matchWinsA: number, matchWinsB: number, totalScoreA: number, totalScoreB: number, matches: Match[], round: string, finishedMatches: number }> = {};
+  
+  // Filter matches by current gender tab
+  const categoryMatches = matches.filter(m => m.category === activeCategory);
 
-  matches.forEach(m => {
+  categoryMatches.forEach(m => {
     if (m.round === 'group_a' || m.round === 'group_b') {
       const pA = m.player_a;
       const pB = m.player_b;
@@ -316,6 +320,66 @@ export default function ResultsTab() {
 
   const sortedGroupA = Object.values(groupAStandings).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore);
   const sortedGroupB = Object.values(groupBStandings).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore);
+
+  // Auto-generate Semi-Final Bracket Matches based on Standings
+  const autoBracketMatches: any[] = [];
+  
+  // A1 vs B2
+  if (sortedGroupA.length >= 1 && sortedGroupB.length >= 2) {
+    autoBracketMatches.push({
+      id: 'auto_semi_1',
+      round: 'semi_finals',
+      stage_index: 2,
+      status: 'pending',
+      player_a_id: sortedGroupA[0].id,
+      player_b_id: sortedGroupB[1].id,
+      player_a: { full_name: sortedGroupA[0].teamName, team: { university: { name: sortedGroupA[0].uniName } } },
+      player_b: { full_name: sortedGroupB[1].teamName, team: { university: { name: sortedGroupB[1].uniName } } },
+      score_a: 0,
+      score_b: 0,
+      winner_id: null
+    });
+  }
+
+  // B1 vs A2
+  if (sortedGroupB.length >= 1 && sortedGroupA.length >= 2) {
+    autoBracketMatches.push({
+      id: 'auto_semi_2',
+      round: 'semi_finals',
+      stage_index: 2,
+      status: 'pending',
+      player_a_id: sortedGroupB[0].id,
+      player_b_id: sortedGroupA[1].id,
+      player_a: { full_name: sortedGroupB[0].teamName, team: { university: { name: sortedGroupB[0].uniName } } },
+      player_b: { full_name: sortedGroupA[1].teamName, team: { university: { name: sortedGroupA[1].uniName } } },
+      score_a: 0,
+      score_b: 0,
+      winner_id: null
+    });
+  }
+
+  // Finals
+  if (autoBracketMatches.length === 2) {
+    autoBracketMatches.push({
+      id: 'auto_finals',
+      round: 'finals',
+      stage_index: 1,
+      status: 'pending',
+      player_a_id: 'tbd1',
+      player_b_id: 'tbd2',
+      player_a: { full_name: 'Winner of Semi 1' },
+      player_b: { full_name: 'Winner of Semi 2' },
+      score_a: 0,
+      score_b: 0,
+      winner_id: null
+    });
+  }
+
+  // Find any manually scheduled semi/finals for this category
+  const manualBracketMatches = categoryMatches.filter(m => m.round === 'semi_finals' || m.round === 'finals');
+  
+  // Prefer manual bracket if it has items, otherwise use auto bracket
+  const displayBracketMatches = manualBracketMatches.length > 0 ? manualBracketMatches : autoBracketMatches;
 
   const renderStandingsTable = (title: string, data: any[]) => (
     <div className="glass-panel border border-white/5 rounded-3xl overflow-hidden mb-6">
@@ -420,10 +484,35 @@ export default function ResultsTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h2 className="text-xl font-extrabold text-white">Championship Results</h2>
-        <p className="text-xs text-slate-400 mt-0.5">Explore group standings, knockouts, and completed matchups.</p>
+      {/* Header & Gender Toggle */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h2 className="text-xl font-extrabold text-white">Championship Results</h2>
+          <p className="text-xs text-slate-400 mt-0.5">Explore group standings, knockouts, and completed matchups.</p>
+        </div>
+        
+        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 shrink-0">
+          <button
+            onClick={() => { setActiveCategory('boys'); setExpandedTeamId(null); setExpandedMatchId(null); }}
+            className={`px-6 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all ${
+              activeCategory === 'boys'
+                ? 'bg-[#22c55e] text-slate-950 shadow-md'
+                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            Boys
+          </button>
+          <button
+            onClick={() => { setActiveCategory('girls'); setExpandedTeamId(null); setExpandedMatchId(null); }}
+            className={`px-6 py-2 rounded-lg text-[10px] font-extrabold uppercase tracking-widest transition-all ${
+              activeCategory === 'girls'
+                ? 'bg-[#22c55e] text-slate-950 shadow-md'
+                : 'text-slate-400 hover:bg-white/5 hover:text-white'
+            }`}
+          >
+            Girls
+          </button>
+        </div>
       </div>
 
       {/* Group Standings */}
@@ -435,18 +524,18 @@ export default function ResultsTab() {
       )}
 
       {/* Bracket View (Only Knockout Matches) */}
-      {matches.some(m => m.round === 'semi_finals' || m.round === 'finals') && (
+      {displayBracketMatches.length > 0 && (
         <div className="mt-8">
           <h3 className="text-sm font-bold text-slate-300 mb-3 flex items-center gap-2">
             <Trophy className="w-4 h-4 text-amber-400" /> Knockout Stage Bracket
           </h3>
-          <TournamentBracket matches={matches.filter(m => m.round === 'semi_finals' || m.round === 'finals')} />
+          <TournamentBracket matches={displayBracketMatches} />
         </div>
       )}
 
       {/* Completed Matches List */}
       <h3 className="text-sm font-bold text-slate-300 mb-3 mt-8">Recent Completed Matches</h3>
-      {finishedMatches.length === 0 ? (
+      {categoryMatches.filter((m) => m.status === 'finished').length === 0 ? (
         <div className="glass-panel border-dashed border-white/10 rounded-3xl p-10 text-center max-w-lg mx-auto space-y-3">
           <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-400">
             <History className="w-6 h-6" />
@@ -458,7 +547,7 @@ export default function ResultsTab() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {finishedMatches.map(renderScoreCard)}
+          {categoryMatches.filter((m) => m.status === 'finished').map(renderScoreCard)}
         </div>
       )}
     </div>
