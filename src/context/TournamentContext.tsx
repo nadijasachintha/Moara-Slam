@@ -370,7 +370,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
       name: payload.teamName,
       university_id: payload.universityId,
       leader_name: payload.leaderName,
-      leader_email: payload.leaderEmail
+      leader_email: payload.leaderEmail,
+      category: payload.category,
+      group_name: payload.groupName
     };
 
     const newPlayers = payload.players.map((p: any) => ({

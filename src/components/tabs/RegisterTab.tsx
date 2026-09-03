@@ -37,6 +37,8 @@ export default function RegisterTab() {
   const [teamName, setTeamName] = useState('');
   const [leaderName, setLeaderName] = useState('');
   const [leaderEmail, setLeaderEmail] = useState('');
+  const [teamCategory, setTeamCategory] = useState<'boys' | 'girls'>('boys');
+  const [teamGroup, setTeamGroup] = useState<'group_a' | 'group_b'>('group_a');
   const [players, setPlayers] = useState<FormPlayer[]>([
     { fullName: '', indexNumber: '', isLeader: true }
   ]);
@@ -148,6 +150,8 @@ export default function RegisterTab() {
         teamName: teamName.trim(),
         leaderName: leaderName.trim(),
         leaderEmail: leaderEmail.trim(),
+        category: teamCategory,
+        groupName: teamGroup,
         players: players.map((p) => ({
           fullName: p.fullName.trim(),
           indexNumber: p.indexNumber.trim(),
@@ -231,6 +235,32 @@ export default function RegisterTab() {
                   onChange={(e) => setTeamName(e.target.value)}
                   className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#22c55e] focus:outline-none transition-all"
                 />
+              </div>
+
+              {/* Category and Group */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Gender</label>
+                  <select 
+                    value={teamCategory}
+                    onChange={(e) => setTeamCategory(e.target.value as 'boys' | 'girls')}
+                    className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#22c55e] focus:outline-none transition-all appearance-none"
+                  >
+                    <option value="boys">Boys</option>
+                    <option value="girls">Girls</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Group</label>
+                  <select 
+                    value={teamGroup}
+                    onChange={(e) => setTeamGroup(e.target.value as 'group_a' | 'group_b')}
+                    className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#22c55e] focus:outline-none transition-all appearance-none"
+                  >
+                    <option value="group_a">Group A</option>
+                    <option value="group_b">Group B</option>
+                  </select>
+                </div>
               </div>
 
               {/* Leader Email */}
@@ -352,6 +382,12 @@ export default function RegisterTab() {
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Contact Leader</span>
                     <p className="text-xs font-semibold text-slate-200 truncate">{leaderName || 'N/A'}</p>
                     <p className="text-[9px] text-slate-500 truncate">{leaderEmail || 'No email specified'}</p>
+                  </div>
+                  
+                  <div>
+                    <span className="text-[9px] text-slate-400 uppercase font-bold">Category</span>
+                    <p className="text-xs font-semibold text-slate-200 truncate uppercase">{teamCategory}</p>
+                    <p className="text-[9px] text-slate-500 truncate uppercase">{teamGroup.replace('_', ' ')}</p>
                   </div>
 
                   <div className="border-t border-white/5 pt-3">

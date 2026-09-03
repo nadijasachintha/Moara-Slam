@@ -10,6 +10,8 @@ export interface Team {
   university_id: string;
   leader_name: string;
   leader_email: string;
+  category: 'boys' | 'girls';
+  group_name: 'group_a' | 'group_b';
   created_at: string;
   university?: University;
   players?: Player[];

@@ -44,10 +44,13 @@ export async function addUniversity(name: string): Promise<University> {
 
 // Submit a registration
 export async function submitRegistration(payload: {
-  universityId: string;
   teamName: string;
+  universityId: string; // Could be 'new_xxx'
+  newUniversityName?: string;
   leaderName: string;
   leaderEmail: string;
+  category: 'boys' | 'girls';
+  groupName: 'group_a' | 'group_b';
   players: { fullName: string; indexNumber: string; isLeader: boolean }[];
   submittedByAdminEmail?: string;
 }) {
@@ -120,7 +123,7 @@ export async function submitRegistration(payload: {
       }
     }
 
-    const initialStatus = isAdminSubmitting ? 'approved' : 'pending';
+    const initialStatus = 'pending'; // Always send to pending, even if submitted by admin
 
     const { data: team, error: teamError } = await supabase
       .from('teams')
@@ -129,6 +132,8 @@ export async function submitRegistration(payload: {
         university_id: finalUniId,
         leader_name: payload.leaderName,
         leader_email: payload.leaderEmail,
+        category: payload.category,
+        group_name: payload.groupName,
       })
       .select()
       .single();
