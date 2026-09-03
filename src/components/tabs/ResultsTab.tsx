@@ -51,12 +51,19 @@ export default function ResultsTab() {
   const renderScoreCard = (match: Match) => {
     const isExpanded = expandedMatchId === match.id;
     const playerA = match.player_a;
+    const playerA2 = match.player_a2;
     const playerB = match.player_b;
+    const playerB2 = match.player_b2;
     const winner = match.winner;
 
     const nameA = playerA ? playerA.full_name : 'TBD';
+    const nameA2 = playerA2 ? ` & ${playerA2.full_name}` : '';
+    const displayA = `${nameA}${nameA2}`;
     const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    
     const nameB = playerB ? playerB.full_name : 'TBD';
+    const nameB2 = playerB2 ? ` & ${playerB2.full_name}` : '';
+    const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
 
     const startTimeStr = match.match_start_time 
@@ -66,7 +73,7 @@ export default function ResultsTab() {
     const isBye = match.status === 'finished' && (match.player_a_id === null || match.player_b_id === null);
 
     if (isBye) {
-      const advancedPlayerName = playerA ? nameA : nameB;
+      const advancedPlayerName = playerA ? displayA : displayB;
       const advancedPlayerUni = playerA ? uniA : uniB;
       return (
         <div 
@@ -121,31 +128,28 @@ export default function ResultsTab() {
         <div className="flex items-center justify-between gap-2 py-1">
           {/* Player A */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className={`font-extrabold text-sm truncate leading-tight ${
+            <h4 className={`font-extrabold text-xs truncate leading-tight ${
               winner?.id === playerA?.id ? 'text-[#22c55e]' : 'text-slate-400'
             }`}>
-              {nameA}
+              {displayA}
               {winner?.id === playerA?.id && ' 🏆'}
             </h4>
             <span className="text-[9px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
           </div>
 
-          {/* Central Score Digits */}
+          {/* Central VS */}
           <div className="flex flex-col items-center justify-center px-3 shrink-0">
-            <span className="text-2xl font-black text-white tracking-widest bg-slate-950/60 px-3 py-1 rounded-xl border border-white/5 leading-none">
+            <span className="text-[12px] font-extrabold bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] px-3 py-1 rounded-full text-center tabular-nums shadow-[0_0_10px_rgba(34,197,94,0.1)]">
               {match.score_a} - {match.score_b}
-            </span>
-            <span className="text-[9px] text-slate-500 font-bold uppercase tracking-wider mt-1.5 leading-none">
-              {match.current_frame} frames
             </span>
           </div>
 
           {/* Player B */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className={`font-extrabold text-sm truncate leading-tight ${
+            <h4 className={`font-extrabold text-xs truncate leading-tight ${
               winner?.id === playerB?.id ? 'text-[#22c55e]' : 'text-slate-400'
             }`}>
-              {nameB}
+              {displayB}
               {winner?.id === playerB?.id && ' 🏆'}
             </h4>
             <span className="text-[9px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>

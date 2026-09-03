@@ -36,8 +36,11 @@ export interface Registration {
 
 export interface Match {
   id: string;
+  match_type: 'single' | 'double';
   player_a_id: string | null;
+  player_a2_id: string | null;
   player_b_id: string | null;
+  player_b2_id: string | null;
   winner_id: string | null;
   table_number: number;
   scheduled_time: string;
@@ -63,7 +66,9 @@ export interface Match {
   
   // Joined relation fields for UI
   player_a?: Player;
+  player_a2?: Player;
   player_b?: Player;
+  player_b2?: Player;
   winner?: Player;
 }
 

@@ -256,7 +256,13 @@ export async function getMatches(): Promise<Match[]> {
       player_a:players!matches_player_a_id_fkey(
         id, full_name, index_number, team:teams(id, name, university:universities(name))
       ),
+      player_a2:players!matches_player_a2_id_fkey(
+        id, full_name, index_number, team:teams(id, name, university:universities(name))
+      ),
       player_b:players!matches_player_b_id_fkey(
+        id, full_name, index_number, team:teams(id, name, university:universities(name))
+      ),
+      player_b2:players!matches_player_b2_id_fkey(
         id, full_name, index_number, team:teams(id, name, university:universities(name))
       ),
       winner:players!matches_winner_id_fkey(
@@ -421,8 +427,11 @@ export async function getApprovedPlayers() {
 
 export async function createManualMatch(payload: {
   round: string;
+  matchType: 'single' | 'double';
   playerAId: string | null;
+  playerA2Id?: string | null;
   playerBId: string | null;
+  playerB2Id?: string | null;
   tableNumber: number;
   scheduledTime: string;
   adminEmail: string;
@@ -437,8 +446,11 @@ export async function createManualMatch(payload: {
 
   const { error } = await adminClient.from('matches').insert({
     id: crypto.randomUUID(),
+    match_type: payload.matchType,
     player_a_id: payload.playerAId,
+    player_a2_id: payload.playerA2Id || null,
     player_b_id: payload.playerBId,
+    player_b2_id: payload.playerB2Id || null,
     winner_id: null,
     table_number: payload.tableNumber,
     scheduled_time: payload.scheduledTime,

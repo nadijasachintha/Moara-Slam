@@ -72,18 +72,18 @@ const DEFAULT_TEAMS = [
 ];
 
 const DEFAULT_PLAYERS = [
-  { id: 'p1', team_id: 't1', full_name: 'Amara Silva', index_number: '220011A', is_leader: true },
-  { id: 'p2', team_id: 't1', full_name: 'Kasun Wickramasinghe', index_number: '220012B', is_leader: false },
-  { id: 'p3', team_id: 't2', full_name: 'Buddhika Perera', index_number: '210123T', is_leader: true },
-  { id: 'p4', team_id: 't2', full_name: 'Dilan Pathirana', index_number: '210124V', is_leader: false },
-  { id: 'p5', team_id: 't3', full_name: 'Chathura Fernando', index_number: '230554X', is_leader: true },
-  { id: 'p6', team_id: 't3', full_name: 'Lahiru Silva', index_number: '230555Y', is_leader: false },
-  { id: 'p7', team_id: 't4', full_name: 'Dinesh Kumara', index_number: '200432E', is_leader: true },
-  { id: 'p8', team_id: 't4', full_name: 'Ruwan Perera', index_number: '200433F', is_leader: false },
-  { id: 'p9', team_id: 't5', full_name: 'Ethan Hunt', index_number: '990022M', is_leader: true },
-  { id: 'p10', team_id: 't5', full_name: 'John Doe', index_number: '990023N', is_leader: false },
-  { id: 'p11', team_id: 't6', full_name: 'Fathima Riza', index_number: '220911V', is_leader: true },
-  { id: 'p12', team_id: 't6', full_name: 'Sajith De Silva', index_number: '220912W', is_leader: false }
+  { id: 'p1', team_id: 't1', full_name: 'Amara Silva', index_number: '220011A', is_leader: true, team: { id: 't1', name: 'CSE Strikers', university_id: 'u1', university: { name: 'University of Moratuwa' } } },
+  { id: 'p2', team_id: 't1', full_name: 'Kasun Wickramasinghe', index_number: '220012B', is_leader: false, team: { id: 't1', name: 'CSE Strikers', university_id: 'u1', university: { name: 'University of Moratuwa' } } },
+  { id: 'p3', team_id: 't2', full_name: 'Buddhika Perera', index_number: '210123T', is_leader: true, team: { id: 't2', name: 'Mechanical Slammers', university_id: 'u1', university: { name: 'University of Moratuwa' } } },
+  { id: 'p4', team_id: 't2', full_name: 'Dilan Pathirana', index_number: '210124V', is_leader: false, team: { id: 't2', name: 'Mechanical Slammers', university_id: 'u1', university: { name: 'University of Moratuwa' } } },
+  { id: 'p5', team_id: 't3', full_name: 'Chathura Fernando', index_number: '230554X', is_leader: true, team: { id: 't3', name: 'UCSC Boarders', university_id: 'u2', university: { name: 'University of Colombo' } } },
+  { id: 'p6', team_id: 't3', full_name: 'Lahiru Silva', index_number: '230555Y', is_leader: false, team: { id: 't3', name: 'UCSC Boarders', university_id: 'u2', university: { name: 'University of Colombo' } } },
+  { id: 'p7', team_id: 't4', full_name: 'Dinesh Kumara', index_number: '200432E', is_leader: true, team: { id: 't4', name: 'Pera Pockets', university_id: 'u3', university: { name: 'University of Peradeniya' } } },
+  { id: 'p8', team_id: 't4', full_name: 'Ruwan Perera', index_number: '200433F', is_leader: false, team: { id: 't4', name: 'Pera Pockets', university_id: 'u3', university: { name: 'University of Peradeniya' } } },
+  { id: 'p9', team_id: 't5', full_name: 'Ethan Hunt', index_number: '990022M', is_leader: true, team: { id: 't5', name: 'MIT Sliders', university_id: 'u5', university: { name: 'MIT' } } },
+  { id: 'p10', team_id: 't5', full_name: 'John Doe', index_number: '990023N', is_leader: false, team: { id: 't5', name: 'MIT Sliders', university_id: 'u5', university: { name: 'MIT' } } },
+  { id: 'p11', team_id: 't6', full_name: 'Fathima Riza', index_number: '220911V', is_leader: true, team: { id: 't6', name: 'Civil Rebounds', university_id: 'u1', university: { name: 'University of Moratuwa' } } },
+  { id: 'p12', team_id: 't6', full_name: 'Sajith De Silva', index_number: '220912W', is_leader: false, team: { id: 't6', name: 'Civil Rebounds', university_id: 'u1', university: { name: 'University of Moratuwa' } } }
 ];
 
 export function TournamentProvider({ children }: { children: React.ReactNode }) {

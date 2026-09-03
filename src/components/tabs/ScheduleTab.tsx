@@ -44,8 +44,18 @@ export default function ScheduleTab() {
   const [creatingMatch, setCreatingMatch] = useState(false);
   const [playersList, setPlayersList] = useState<any[]>([]);
   const [newMatchRound, setNewMatchRound] = useState('group_a');
+  
+  const [newMatchType, setNewMatchType] = useState<'single' | 'double'>('single');
+  const [uniA, setUniA] = useState('');
+  const [uniB, setUniB] = useState('');
+  const [teamA, setTeamA] = useState('');
+  const [teamB, setTeamB] = useState('');
+
   const [newMatchPlayerA, setNewMatchPlayerA] = useState('');
+  const [newMatchPlayerA2, setNewMatchPlayerA2] = useState('');
   const [newMatchPlayerB, setNewMatchPlayerB] = useState('');
+  const [newMatchPlayerB2, setNewMatchPlayerB2] = useState('');
+  
   const [newMatchTable, setNewMatchTable] = useState(1);
   const [newMatchTime, setNewMatchTime] = useState('');
 
@@ -55,11 +65,17 @@ export default function ScheduleTab() {
       const p = await getPlayers();
       setPlayersList(p);
       setShowCreateModal(true);
-      // Set default time to now
+      // Set default time to now (HH:mm format for time input)
       const localDate = new Date();
       const tzOffset = localDate.getTimezoneOffset() * 60000;
-      const localISOTime = new Date(localDate.getTime() - tzOffset).toISOString().slice(0, 16);
-      setNewMatchTime(localISOTime);
+      const localTimeString = new Date(localDate.getTime() - tzOffset).toISOString().slice(11, 16);
+      setNewMatchTime(localTimeString);
+      
+      // Select first available valid table (not live)
+      const liveTables = matches.filter(m => m.status === 'live').map(m => m.table_number);
+      const availableTables = Array.from({length: 10}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
+      setNewMatchTable(availableTables.length > 0 ? availableTables[0] : 1);
+      
     } catch (err: any) {
       alert('Error fetching players: ' + err.message);
     }
@@ -67,25 +83,41 @@ export default function ScheduleTab() {
 
   const handleCreateMatch = async () => {
     if (!newMatchPlayerA || !newMatchPlayerB) {
-      alert('Please select both players/teams');
+      alert('Please select Player 1 for both teams');
       return;
     }
-    if (newMatchPlayerA === newMatchPlayerB) {
-      alert('Player A and Player B cannot be the same');
+    if (newMatchType === 'double' && (!newMatchPlayerA2 || !newMatchPlayerB2)) {
+      alert('Please select Player 2 for both teams in a double match');
       return;
     }
+    if (newMatchPlayerA === newMatchPlayerA2 || newMatchPlayerB === newMatchPlayerB2) {
+      alert('A player cannot be selected twice in the same team');
+      return;
+    }
+    
     setCreatingMatch(true);
     try {
+      // Build an ISO string using today's date and the selected time
+      const todayStr = new Date().toISOString().split('T')[0];
+      const scheduledIso = `${todayStr}T${newMatchTime}:00.000Z`;
+
       await createMatch({
         round: newMatchRound,
+        matchType: newMatchType,
         playerAId: newMatchPlayerA,
+        playerA2Id: newMatchType === 'double' ? newMatchPlayerA2 : null,
         playerBId: newMatchPlayerB,
+        playerB2Id: newMatchType === 'double' ? newMatchPlayerB2 : null,
         tableNumber: newMatchTable,
-        scheduledTime: new Date(newMatchTime).toISOString()
+        scheduledTime: scheduledIso
       });
       setShowCreateModal(false);
       setNewMatchPlayerA('');
+      setNewMatchPlayerA2('');
       setNewMatchPlayerB('');
+      setNewMatchPlayerB2('');
+      setTeamA(''); setTeamB('');
+      setUniA(''); setUniB('');
     } catch (err: any) {
       alert(err.message || 'Error creating match');
     } finally {
@@ -165,18 +197,27 @@ export default function ScheduleTab() {
 
   const renderScoreCard = (match: Match) => {
     const playerA = match.player_a;
+    const playerA2 = match.player_a2;
     const playerB = match.player_b;
+    const playerB2 = match.player_b2;
+    
     const nameA = playerA ? playerA.full_name : 'TBD';
+    const nameA2 = playerA2 ? ` & ${playerA2.full_name}` : '';
+    const displayA = `${nameA}${nameA2}`;
     const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    
     const nameB = playerB ? playerB.full_name : 'TBD';
+    const nameB2 = playerB2 ? ` & ${playerB2.full_name}` : '';
+    const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
+    
     const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const isBye = match.status === 'finished' && (match.player_a_id === null || match.player_b_id === null);
     const isTBD = match.player_a_id === null || match.player_b_id === null;
 
     if (isBye) {
-      const advancedPlayerName = playerA ? nameA : nameB;
+      const advancedPlayerName = playerA ? displayA : displayB;
       const advancedPlayerUni = playerA ? uniA : uniB;
       return (
         <div 
@@ -223,12 +264,12 @@ export default function ScheduleTab() {
 
           <div className="flex items-center justify-between gap-2 py-1">
             <div className="flex-1 text-center min-w-0">
-              <h4 className="font-extrabold text-slate-400 text-xs truncate leading-tight">{nameA}</h4>
+              <h4 className="font-extrabold text-slate-400 text-[10px] truncate leading-tight">{displayA}</h4>
               <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
             </div>
             <span className="text-[9px] font-extrabold text-slate-600 px-2 py-0.5 leading-none">VS</span>
             <div className="flex-1 text-center min-w-0">
-              <h4 className="font-extrabold text-slate-400 text-xs truncate leading-tight">{nameB}</h4>
+              <h4 className="font-extrabold text-slate-400 text-[10px] truncate leading-tight">{displayB}</h4>
               <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
             </div>
           </div>
@@ -277,7 +318,7 @@ export default function ScheduleTab() {
         <div className="flex items-center justify-between gap-2 py-1">
           {/* Player A */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameA}</h4>
+            <h4 className="font-extrabold text-white text-xs truncate leading-tight">{displayA}</h4>
             <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
           </div>
 
@@ -290,7 +331,7 @@ export default function ScheduleTab() {
 
           {/* Player B */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameB}</h4>
+            <h4 className="font-extrabold text-white text-xs truncate leading-tight">{displayB}</h4>
             <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
           </div>
         </div>
@@ -640,70 +681,164 @@ export default function ScheduleTab() {
               </button>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Tournament Round / Stage</label>
-                <select
-                  value={newMatchRound}
-                  onChange={(e) => setNewMatchRound(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
-                >
-                  <option value="group_a">Group A</option>
-                  <option value="group_b">Group B</option>
-                  <option value="semi_finals">Semi Finals</option>
-                  <option value="finals">Finals</option>
-                </select>
-              </div>
-
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Competitor A</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Tournament Round</label>
                   <select
-                    value={newMatchPlayerA}
-                    onChange={(e) => setNewMatchPlayerA(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                    value={newMatchRound}
+                    onChange={(e) => setNewMatchRound(e.target.value)}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
                   >
-                    <option value="">Select Team / Player</option>
-                    {playersList.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.team?.university?.name ? `${p.team.university.name} - ${p.full_name}` : p.full_name}
-                      </option>
-                    ))}
+                    <option value="group_a">Group A</option>
+                    <option value="group_b">Group B</option>
+                    <option value="semi_finals">Semi Finals</option>
+                    <option value="finals">Finals</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Competitor B</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Match Type</label>
+                  <select
+                    value={newMatchType}
+                    onChange={(e) => setNewMatchType(e.target.value as 'single'|'double')}
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
+                  >
+                    <option value="single">Single Match</option>
+                    <option value="double">Double Match</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* TEAM A SELECTION */}
+              <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+                <h4 className="text-xs font-bold text-[#22c55e] uppercase tracking-widest">Competitor A</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={uniA}
+                    onChange={(e) => { setUniA(e.target.value); setTeamA(''); setNewMatchPlayerA(''); setNewMatchPlayerA2(''); }}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  >
+                    <option value="">Select University</option>
+                    {Array.from(new Set(playersList.map(p => p.team?.university?.name))).filter(Boolean).map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={teamA}
+                    onChange={(e) => { setTeamA(e.target.value); setNewMatchPlayerA(''); setNewMatchPlayerA2(''); }}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    disabled={!uniA}
+                  >
+                    <option value="">Select Team</option>
+                    {Array.from(new Set(playersList.filter(p => p.team?.university?.name === uniA).map(p => p.team?.name))).filter(Boolean).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
+                  <select
+                    value={newMatchPlayerA}
+                    onChange={(e) => setNewMatchPlayerA(e.target.value)}
+                    className="w-full bg-black/40 border border-[#22c55e]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    disabled={!teamA}
+                  >
+                    <option value="">Player 1</option>
+                    {playersList.filter(p => p.team?.name === teamA).map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name}</option>
+                    ))}
+                  </select>
+                  {newMatchType === 'double' && (
+                    <select
+                      value={newMatchPlayerA2}
+                      onChange={(e) => setNewMatchPlayerA2(e.target.value)}
+                      className="w-full bg-black/40 border border-[#22c55e]/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      disabled={!teamA}
+                    >
+                      <option value="">Player 2</option>
+                      {playersList.filter(p => p.team?.name === teamA).map(p => (
+                        <option key={p.id} value={p.id}>{p.full_name}</option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              </div>
+
+              {/* TEAM B SELECTION */}
+              <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+                <h4 className="text-xs font-bold text-amber-400 uppercase tracking-widest">Competitor B</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <select
+                    value={uniB}
+                    onChange={(e) => { setUniB(e.target.value); setTeamB(''); setNewMatchPlayerB(''); setNewMatchPlayerB2(''); }}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                  >
+                    <option value="">Select University</option>
+                    {Array.from(new Set(playersList.map(p => p.team?.university?.name))).filter(Boolean).map(u => (
+                      <option key={u} value={u}>{u}</option>
+                    ))}
+                  </select>
+                  <select
+                    value={teamB}
+                    onChange={(e) => { setTeamB(e.target.value); setNewMatchPlayerB(''); setNewMatchPlayerB2(''); }}
+                    className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    disabled={!uniB}
+                  >
+                    <option value="">Select Team</option>
+                    {Array.from(new Set(playersList.filter(p => p.team?.university?.name === uniB).map(p => p.team?.name))).filter(Boolean).map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="grid grid-cols-1 gap-3">
                   <select
                     value={newMatchPlayerB}
                     onChange={(e) => setNewMatchPlayerB(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
+                    className="w-full bg-black/40 border border-amber-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                    disabled={!teamB}
                   >
-                    <option value="">Select Team / Player</option>
-                    {playersList.map(p => (
-                      <option key={p.id} value={p.id}>
-                        {p.team?.university?.name ? `${p.team.university.name} - ${p.full_name}` : p.full_name}
-                      </option>
+                    <option value="">Player 1</option>
+                    {playersList.filter(p => p.team?.name === teamB).map(p => (
+                      <option key={p.id} value={p.id}>{p.full_name}</option>
                     ))}
                   </select>
+                  {newMatchType === 'double' && (
+                    <select
+                      value={newMatchPlayerB2}
+                      onChange={(e) => setNewMatchPlayerB2(e.target.value)}
+                      className="w-full bg-black/40 border border-amber-400/30 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
+                      disabled={!teamB}
+                    >
+                      <option value="">Player 2</option>
+                      {playersList.filter(p => p.team?.name === teamB).map(p => (
+                        <option key={p.id} value={p.id}>{p.full_name}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Table Number</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="50"
+                  <select
                     value={newMatchTable}
                     onChange={(e) => setNewMatchTable(parseInt(e.target.value))}
-                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all"
-                  />
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
+                  >
+                    {Array.from({length: 10}, (_, i) => i + 1).map(t => {
+                      const isLive = matches.some(m => m.status === 'live' && m.table_number === t);
+                      return (
+                        <option key={t} value={t} disabled={isLive}>
+                          Table {t} {isLive ? '(In Use)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Scheduled Time</label>
                   <input
-                    type="datetime-local"
+                    type="time"
                     value={newMatchTime}
                     onChange={(e) => setNewMatchTime(e.target.value)}
                     className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all color-scheme-dark"
