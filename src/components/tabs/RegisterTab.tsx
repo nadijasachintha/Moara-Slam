@@ -36,7 +36,6 @@ export default function RegisterTab() {
   const [selectedUniId, setSelectedUniId] = useState('');
   const [teamName, setTeamName] = useState('');
   const [leaderName, setLeaderName] = useState('');
-  const [leaderEmail, setLeaderEmail] = useState('');
   const [teamCategory, setTeamCategory] = useState<'boys' | 'girls'>('boys');
   const [teamGroup, setTeamGroup] = useState<'group_a' | 'group_b'>('group_a');
   const [players, setPlayers] = useState<FormPlayer[]>([
@@ -115,8 +114,7 @@ export default function RegisterTab() {
   const validateForm = () => {
     if (!selectedUniId) return 'Please select your University.';
     if (!teamName.trim()) return 'Please choose a Team Name.';
-    if (!leaderEmail.trim()) return 'Please provide your Leader Email.';
-    if (players.length === 0) return 'Please register at least one player.';
+    if (players.length < 3) return 'At least 3 players are required.';
     
     for (let i = 0; i < players.length; i++) {
       if (!players[i].fullName.trim() || !players[i].indexNumber.trim()) {
@@ -149,7 +147,7 @@ export default function RegisterTab() {
         universityId: selectedUniId,
         teamName: teamName.trim(),
         leaderName: leaderName.trim(),
-        leaderEmail: leaderEmail.trim(),
+        leaderEmail: 'no-email@example.com',
         category: teamCategory,
         groupName: teamGroup,
         players: players.map((p) => ({
@@ -263,19 +261,6 @@ export default function RegisterTab() {
                 </div>
               </div>
 
-              {/* Leader Email */}
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase mb-1.5">Leader Email</label>
-                <input
-                  type="email"
-                  required
-                  placeholder="leader@mora.edu"
-                  value={leaderEmail}
-                  onChange={(e) => setLeaderEmail(e.target.value)}
-                  className="w-full bg-slate-950/40 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-[#22c55e] focus:outline-none transition-all"
-                />
-              </div>
-
               {/* Roster */}
               <div className="space-y-3 pt-3 border-t border-white/5">
                 <div className="flex items-center justify-between">
@@ -381,7 +366,6 @@ export default function RegisterTab() {
                   <div>
                     <span className="text-[9px] text-slate-400 uppercase font-bold">Contact Leader</span>
                     <p className="text-xs font-semibold text-slate-200 truncate">{leaderName || 'N/A'}</p>
-                    <p className="text-[9px] text-slate-500 truncate">{leaderEmail || 'No email specified'}</p>
                   </div>
                   
                   <div>
@@ -444,11 +428,6 @@ export default function RegisterTab() {
               <div className="flex justify-between py-1.5 border-b border-white/5">
                 <span className="text-slate-400 font-medium">Leader Name:</span>
                 <span className="text-white font-bold">{leaderName}</span>
-              </div>
-
-              <div className="flex justify-between py-1.5 border-b border-white/5">
-                <span className="text-slate-400 font-medium">Leader Email:</span>
-                <span className="text-white font-bold">{leaderEmail}</span>
               </div>
 
               <div className="pt-2">
@@ -529,7 +508,6 @@ export default function RegisterTab() {
                 onClick={() => {
                   setTeamName('');
                   setSelectedUniId('');
-                  setLeaderEmail('');
                   setLeaderName('');
                   setPlayers([{ fullName: '', indexNumber: '', isLeader: true }]);
                   setStage('edit');
@@ -606,7 +584,7 @@ export default function RegisterTab() {
                       </div>
 
                       <div className="space-y-1 mt-2 text-[10px] text-slate-300">
-                        <p>Leader: <strong className="text-white">{team?.leader_name}</strong> ({team?.leader_email})</p>
+                        <p>Leader: <strong className="text-white">{team?.leader_name}</strong></p>
                       </div>
 
                       <div className="bg-slate-950/45 p-2.5 rounded-xl border border-white/5 space-y-1.5 mt-2">
