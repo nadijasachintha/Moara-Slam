@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 export default function ResultsTab() {
   const { matches } = useTournament();
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+  const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
 
   const toggleExpand = (matchId: string) => {
     setExpandedMatchId(expandedMatchId === matchId ? null : matchId);
@@ -214,35 +215,107 @@ export default function ResultsTab() {
     );
   };
 
-  // Calculate Group Standings
+  // Group Standings (Encounter-based)
+  // An "Encounter" is a set of matches between Team A and Team B in a specific round.
+  // First team to 3 match wins gets 1 Encounter Win.
+  // Tie-breaker is the sum of total board scores (score_a + score_b for all matches).
   const groupAStandings: Record<string, any> = {};
   const groupBStandings: Record<string, any> = {};
 
+  const encounters: Record<string, { teamAId: string, teamBId: string, teamAName: string, teamBName: string, teamAUni: string, teamBUni: string, matchWinsA: number, matchWinsB: number, totalScoreA: number, totalScoreB: number, matches: Match[], round: string, finishedMatches: number }> = {};
+
   matches.forEach(m => {
     if (m.round === 'group_a' || m.round === 'group_b') {
-      const isGroupA = m.round === 'group_a';
-      const target = isGroupA ? groupAStandings : groupBStandings;
-      
       const pA = m.player_a;
       const pB = m.player_b;
       
-      if (pA && !target[pA.id]) target[pA.id] = { id: pA.id, played: 0, wins: 0, points: 0, teamName: pA.full_name, uniName: (pA.team as any)?.university?.name || 'N/A' };
-      if (pB && !target[pB.id]) target[pB.id] = { id: pB.id, played: 0, wins: 0, points: 0, teamName: pB.full_name, uniName: (pB.team as any)?.university?.name || 'N/A' };
+      if (!pA || !pB || !pA.team_id || !pB.team_id) return;
+      
+      const teamAId = pA.team_id;
+      const teamBId = pB.team_id;
+      
+      // Create a unique Encounter ID based on team IDs (sorted so A vs B is same as B vs A)
+      const isAFirst = teamAId < teamBId;
+      const t1Id = isAFirst ? teamAId : teamBId;
+      const t2Id = isAFirst ? teamBId : teamAId;
+      const encounterId = `${m.round}_${t1Id}_${t2Id}`;
 
-      if (m.status === 'finished' && m.winner_id) {
-         if (pA) target[pA.id].played += 1;
-         if (pB) target[pB.id].played += 1;
-         
-         if (target[m.winner_id]) {
-           target[m.winner_id].wins += 1;
-           target[m.winner_id].points += 1;
-         }
+      if (!encounters[encounterId]) {
+        encounters[encounterId] = {
+          round: m.round,
+          teamAId: t1Id,
+          teamBId: t2Id,
+          teamAName: isAFirst ? (pA.team as any)?.name : (pB.team as any)?.name,
+          teamBName: isAFirst ? (pB.team as any)?.name : (pA.team as any)?.name,
+          teamAUni: isAFirst ? (pA.team as any)?.university?.name : (pB.team as any)?.university?.name,
+          teamBUni: isAFirst ? (pB.team as any)?.university?.name : (pA.team as any)?.university?.name,
+          matchWinsA: 0,
+          matchWinsB: 0,
+          totalScoreA: 0,
+          totalScoreB: 0,
+          matches: [],
+          finishedMatches: 0
+        };
+      }
+      
+      const enc = encounters[encounterId];
+      enc.matches.push(m);
+      
+      // Calculate scores
+      const scoreForT1 = isAFirst ? m.score_a : m.score_b;
+      const scoreForT2 = isAFirst ? m.score_b : m.score_a;
+      
+      if (m.status === 'finished') {
+        enc.totalScoreA += scoreForT1;
+        enc.totalScoreB += scoreForT2;
+        enc.finishedMatches += 1;
+        
+        if (m.winner_id) {
+          if ((isAFirst && m.winner_id === pA.id) || (!isAFirst && m.winner_id === pB.id)) {
+            enc.matchWinsA += 1;
+          } else {
+            enc.matchWinsB += 1;
+          }
+        }
       }
     }
   });
 
-  const sortedGroupA = Object.values(groupAStandings).sort((a, b) => b.points - a.points);
-  const sortedGroupB = Object.values(groupBStandings).sort((a, b) => b.points - a.points);
+  // Calculate Standings from Encounters
+  Object.values(encounters).forEach(enc => {
+    const target = enc.round === 'group_a' ? groupAStandings : groupBStandings;
+    
+    // Initialize Team A
+    if (!target[enc.teamAId]) {
+      target[enc.teamAId] = { id: enc.teamAId, teamName: enc.teamAName, uniName: enc.teamAUni, played: 0, wins: 0, tieBreakerScore: 0, encounterMatches: [] };
+    }
+    // Initialize Team B
+    if (!target[enc.teamBId]) {
+      target[enc.teamBId] = { id: enc.teamBId, teamName: enc.teamBName, uniName: enc.teamBUni, played: 0, wins: 0, tieBreakerScore: 0, encounterMatches: [] };
+    }
+    
+    // Add encounter references
+    target[enc.teamAId].encounterMatches.push(...enc.matches);
+    target[enc.teamBId].encounterMatches.push(...enc.matches);
+    
+    target[enc.teamAId].tieBreakerScore += enc.totalScoreA;
+    target[enc.teamBId].tieBreakerScore += enc.totalScoreB;
+
+    // Has the encounter finished? (A team reached 3 wins, or 5 matches completed)
+    if (enc.matchWinsA >= 3 || enc.matchWinsB >= 3 || enc.finishedMatches === 5) {
+      target[enc.teamAId].played += 1;
+      target[enc.teamBId].played += 1;
+      
+      if (enc.matchWinsA > enc.matchWinsB) {
+        target[enc.teamAId].wins += 1;
+      } else if (enc.matchWinsB > enc.matchWinsA) {
+        target[enc.teamBId].wins += 1;
+      }
+    }
+  });
+
+  const sortedGroupA = Object.values(groupAStandings).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore);
+  const sortedGroupB = Object.values(groupBStandings).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore);
 
   const renderStandingsTable = (title: string, data: any[]) => (
     <div className="glass-panel border border-white/5 rounded-3xl overflow-hidden mb-6">
@@ -256,10 +329,10 @@ export default function ResultsTab() {
           <thead>
             <tr className="bg-slate-950/40 text-[10px] uppercase tracking-widest text-slate-400 font-extrabold">
               <th className="px-6 py-3 border-b border-white/5">Rank</th>
-              <th className="px-6 py-3 border-b border-white/5">Team / Player</th>
-              <th className="px-6 py-3 border-b border-white/5 text-center">Played</th>
+              <th className="px-6 py-3 border-b border-white/5">Team / University</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Encounters Played</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Wins</th>
-              <th className="px-6 py-3 border-b border-white/5 text-center">Points</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Total Score (Tie-breaker)</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -269,16 +342,74 @@ export default function ResultsTab() {
               </tr>
             ) : (
               data.map((team, idx) => (
-                <tr key={team.id} className="hover:bg-white/5 transition-colors">
-                  <td className="px-6 py-4 text-xs font-bold text-slate-400">#{idx + 1}</td>
-                  <td className="px-6 py-4">
-                    <div className="font-extrabold text-white text-sm">{team.teamName}</div>
-                    <div className="text-[10px] text-slate-400 uppercase tracking-wider">{team.uniName}</div>
-                  </td>
-                  <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.played}</td>
-                  <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.wins}</td>
-                  <td className="px-6 py-4 text-center text-lg font-black text-[#22c55e]">{team.points}</td>
-                </tr>
+                <React.Fragment key={team.id}>
+                  <tr 
+                    onClick={() => setExpandedTeamId(expandedTeamId === team.id ? null : team.id)}
+                    className="hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <td className="px-6 py-4 text-xs font-bold text-slate-400">#{idx + 1}</td>
+                    <td className="px-6 py-4">
+                      <div className="font-extrabold text-white text-sm flex items-center gap-2">
+                        {team.teamName}
+                        {expandedTeamId === team.id ? (
+                          <span className="text-[9px] bg-white/10 text-white px-2 py-0.5 rounded-full border border-white/10 uppercase tracking-widest">Hide Matches</span>
+                        ) : (
+                          <span className="text-[9px] bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20 px-2 py-0.5 rounded-full uppercase tracking-widest">View Matches</span>
+                        )}
+                      </div>
+                      <div className="text-[10px] text-slate-400 uppercase tracking-wider mt-0.5">{team.uniName}</div>
+                    </td>
+                    <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.played}</td>
+                    <td className="px-6 py-4 text-center text-lg font-black text-[#22c55e]">{team.wins}</td>
+                    <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.tieBreakerScore} pts</td>
+                  </tr>
+                  
+                  {expandedTeamId === team.id && (
+                    <tr>
+                      <td colSpan={5} className="p-0 bg-black/20">
+                        <div className="p-4 bg-gradient-to-b from-black/40 to-transparent">
+                          <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#22c55e] mb-3 px-2">Sub-Matches for {team.teamName}</h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {team.encounterMatches.map((m: Match) => {
+                              const isTeamA = m.player_a?.team_id === team.id;
+                              const opponent = isTeamA ? m.player_b : m.player_a;
+                              const myScore = isTeamA ? m.score_a : m.score_b;
+                              const theirScore = isTeamA ? m.score_b : m.score_a;
+                              const opponentName = opponent ? opponent.full_name : 'TBD';
+                              const opponentTeam = opponent ? (opponent.team as any)?.name : 'TBD';
+                              
+                              let statusTag = <span className="bg-white/10 text-slate-400 text-[8px] uppercase font-bold px-1.5 py-0.5 rounded">Yet to start</span>;
+                              if (m.status === 'live') {
+                                statusTag = <span className="bg-emerald-500/20 text-emerald-400 text-[8px] uppercase font-bold px-1.5 py-0.5 rounded animate-pulse">Ongoing</span>;
+                              } else if (m.status === 'finished') {
+                                statusTag = <span className="bg-sky-500/20 text-sky-400 text-[8px] uppercase font-bold px-1.5 py-0.5 rounded">Done</span>;
+                              }
+
+                              return (
+                                <div key={m.id} className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center justify-between">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">vs {opponentTeam}</span>
+                                      {statusTag}
+                                    </div>
+                                    <div className="text-xs font-bold text-white truncate">Match: against {opponentName}</div>
+                                  </div>
+                                  <div className="shrink-0 ml-3 text-right">
+                                    {m.status === 'finished' ? (
+                                      <div className="text-sm font-black text-[#22c55e]">{myScore} - {theirScore}</div>
+                                    ) : (
+                                      <div className="text-xs font-bold text-slate-500">TBD</div>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
               ))
             )}
           </tbody>
