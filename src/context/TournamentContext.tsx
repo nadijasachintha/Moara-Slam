@@ -10,6 +10,7 @@ import {
   resumeMatch,
   updateMatchScore,
   confirmMatchResult,
+  revertMatchToLive,
   rescheduleMatch,
   overrideBracketMatchSlot,
   submitRegistration,
@@ -46,6 +47,7 @@ interface TournamentContextType {
   resumeM: (matchId: string) => Promise<void>;
   updateScore: (matchId: string, scoreA: number, scoreB: number, frame: number) => Promise<void>;
   confirmWinner: (matchId: string, winnerId: string) => Promise<void>;
+  revertToLive: (matchId: string) => Promise<void>;
   reschedule: (matchId: string, table: number, time: string) => Promise<void>;
   overrideSlot: (matchId: string, slot: 'A' | 'B', playerId: string | null) => Promise<void>;
   updateSettings: (start: string, tables: number, duration: number, breakMins: number) => Promise<void>;
@@ -635,6 +637,44 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     addDemoAudit('CONFIRM_RESULT', { matchId, winnerId });
   };
 
+  const revertToLive = async (matchId: string) => {
+    // 1. Optimistic local update
+    const list = [...matches];
+    const mIdx = list.findIndex(m => m.id === matchId);
+    if (mIdx !== -1) {
+      const match = list[mIdx];
+      match.status = 'live';
+      match.winner_id = null;
+      match.winner = undefined;
+
+      // Unprogress winner if next bracket slot exists
+      if (match.next_match_id && match.next_match_player_slot) {
+        const parent = list.find(pm => pm.id === match.next_match_id);
+        if (parent) {
+          if (match.next_match_player_slot === 'A') {
+            parent.player_a_id = null;
+            parent.player_a = undefined;
+          } else {
+            parent.player_b_id = null;
+            parent.player_b = undefined;
+          }
+        }
+      }
+      setMatches(list);
+    }
+
+    // 2. Database update in background
+    if (!isDemoMode) {
+      revertMatchToLive({ matchId, adminEmail }).catch((err) => {
+        console.error('Failed to revert result in database:', err);
+      });
+      return;
+    }
+
+    saveDemoState('matches', list);
+    addDemoAudit('REVERT_TO_LIVE', { matchId });
+  };
+
   const reschedule = async (matchId: string, table: number, time: string) => {
     if (!isDemoMode) {
       await rescheduleMatch({ matchId, tableNumber: table, scheduledTime: time, adminEmail });
@@ -748,6 +788,7 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         resumeM,
         updateScore,
         confirmWinner,
+        revertToLive,
         reschedule,
         overrideSlot,
         updateSettings

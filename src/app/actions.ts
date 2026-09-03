@@ -626,6 +626,46 @@ export async function confirmMatchResult(payload: {
   return { success: true };
 }
 
+export async function revertMatchToLive(payload: { matchId: string; adminEmail: string }) {
+  const adminClient = getSupabaseAdmin();
+
+  const { data: match, error: matchError } = await adminClient
+    .from('matches')
+    .select('next_match_id, next_match_player_slot, winner_id, status')
+    .eq('id', payload.matchId)
+    .single();
+
+  if (matchError || !match) throw new Error('Match not found');
+  if (match.status !== 'finished') throw new Error('Only finished matches can be reverted.');
+
+  // 1. Remove player from next bracket slot if applicable
+  if (match.next_match_id && match.next_match_player_slot) {
+    const updateField = match.next_match_player_slot === 'A' ? 'player_a_id' : 'player_b_id';
+    const { error: revertProgressError } = await adminClient
+      .from('matches')
+      .update({ [updateField]: null })
+      .eq('id', match.next_match_id);
+
+    if (revertProgressError) throw new Error('Failed to remove player from next round: ' + revertProgressError.message);
+  }
+
+  // 2. Set match back to live
+  const { error: updateMatchError } = await adminClient
+    .from('matches')
+    .update({
+      status: 'live',
+      winner_id: null,
+    })
+    .eq('id', payload.matchId);
+
+  if (updateMatchError) throw new Error(updateMatchError.message);
+
+  await logAdminAction(payload.adminEmail, 'REVERT_TO_LIVE', {
+    matchId: payload.matchId,
+  });
+  return { success: true };
+}
+
 // Reschedule Match Time or Table
 export async function rescheduleMatch(payload: {
   matchId: string;

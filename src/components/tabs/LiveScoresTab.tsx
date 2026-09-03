@@ -13,7 +13,11 @@ import {
   Tv,
   Settings,
   Trophy,
-  Clock
+  Clock,
+  Save,
+  Trash2,
+  AlertTriangle,
+  Edit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -238,7 +242,8 @@ export default function LiveScoresTab() {
     pauseM, 
     resumeM, 
     updateScore, 
-    confirmWinner 
+    confirmWinner,
+    revertToLive
   } = useTournament();
 
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
@@ -480,9 +485,22 @@ export default function LiveScoresTab() {
           <span className="text-[8px] font-extrabold text-slate-500 uppercase tracking-widest truncate max-w-[80px]">
             {match.round.replace('_', ' ')}
           </span>
-          <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">
-            Awaiting next
-          </span>
+          {isAdmin ? (
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to edit this match? It will be reverted to "Live" status. Any bracket progression from this match will be undone.')) {
+                  revertToLive(match.id);
+                }
+              }}
+              className="text-[9px] font-bold text-amber-500 hover:text-amber-400 uppercase tracking-wider flex items-center gap-1 transition-colors"
+            >
+              <Edit className="w-3 h-3" /> Edit Result
+            </button>
+          ) : (
+            <span className="text-[8px] font-bold text-slate-600 uppercase tracking-wider">
+              Awaiting next
+            </span>
+          )}
         </div>
       </div>
     );
