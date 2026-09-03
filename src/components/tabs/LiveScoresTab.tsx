@@ -514,9 +514,6 @@ export default function LiveScoresTab() {
               Live
             </span>
           </div>
-          <div className="flex items-center gap-2 text-slate-300">
-            <MatchTimer match={match} />
-          </div>
         </div>
 
         {/* Central Matchup scores (Large Display) */}

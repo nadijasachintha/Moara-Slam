@@ -680,7 +680,23 @@ export default function ScheduleTab() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+            
+            {/* Compute visible universities based on round */}
+            {(() => {
+              const isGroupA = newMatchRound === 'group_a';
+              const isGroupB = newMatchRound === 'group_b';
+              const checkUni = (name: string) => {
+                const n = name.toLowerCase();
+                if (isGroupA) return n.includes('moratuwa') || n.includes('colombo') || n.includes('japura') || n.includes('iit') || n.includes('sri jayewardenepura');
+                if (isGroupB) return n.includes('kelaniya') || n.includes('sliit') || n.includes('sabaragamuwa') || n.includes('ruhuna');
+                return true;
+              };
+              
+              const availableUnis = Array.from(new Set(playersList.map(p => p.team?.university?.name)))
+                                        .filter(Boolean)
+                                        .filter(name => checkUni(name as string));
 
+              return (
             <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -719,8 +735,8 @@ export default function ScheduleTab() {
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                   >
                     <option value="">Select University</option>
-                    {Array.from(new Set(playersList.map(p => p.team?.university?.name))).filter(Boolean).map(u => (
-                      <option key={u} value={u}>{u}</option>
+                    {availableUnis.map(u => (
+                      <option key={u as string} value={u as string}>{u as string}</option>
                     ))}
                   </select>
                   <select
@@ -773,8 +789,8 @@ export default function ScheduleTab() {
                     className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none"
                   >
                     <option value="">Select University</option>
-                    {Array.from(new Set(playersList.map(p => p.team?.university?.name))).filter(Boolean).map(u => (
-                      <option key={u} value={u}>{u}</option>
+                    {availableUnis.map(u => (
+                      <option key={u as string} value={u as string}>{u as string}</option>
                     ))}
                   </select>
                   <select
@@ -862,6 +878,8 @@ export default function ScheduleTab() {
                 </button>
               </div>
             </div>
+            );
+            })()}
           </div>
         </div>
       )}
