@@ -423,10 +423,11 @@ export async function getApprovedPlayers() {
 
   const { data: players, error: playersError } = await adminClient
     .from('players')
-    .select('id, full_name, team_id, teams(name, category, group_name, university_id, universities(name))')
+    .select('id, full_name, team_id, team:teams(name, category, group_name, university_id, university:universities(name))')
     .in('team_id', teamIds);
 
   if (playersError) throw new Error(playersError.message);
+  
   return players || [];
 }
 
