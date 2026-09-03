@@ -19,7 +19,9 @@ import {
   getApprovedPlayers,
   createManualMatch,
   getPendingRegistrations,
-  getUniversities
+  getUniversities,
+  cancelMatch,
+  updateTeamStandings
 } from '@/app/actions';
 import { supabase } from '@/lib/supabase';
 
@@ -51,6 +53,8 @@ interface TournamentContextType {
   reschedule: (matchId: string, table: number, time: string) => Promise<void>;
   overrideSlot: (matchId: string, slot: 'A' | 'B', playerId: string | null) => Promise<void>;
   updateSettings: (start: string, tables: number, duration: number, breakMins: number) => Promise<void>;
+  cancelM: (matchId: string) => Promise<void>;
+  updateStandingsOverride: (teamId: string, played: number | null, wins: number | null, points: number | null) => Promise<void>;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -762,6 +766,31 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     addDemoAudit('UPDATE_SETTINGS', updated);
   };
 
+  const cancelM = async (matchId: string) => {
+    if (!isDemoMode) {
+      await cancelMatch({ matchId, adminEmail });
+      return;
+    }
+    
+    // Demo Mode Override
+    const updated = matches.filter(m => m.id !== matchId);
+    setMatches(updated);
+    saveDemoState('matches', updated);
+    addDemoAudit('CANCEL_MATCH', { matchId });
+  };
+
+  const updateStandingsOverride = async (teamId: string, played: number | null, wins: number | null, points: number | null) => {
+    if (!isDemoMode) {
+      await updateTeamStandings({ teamId, played, wins, points, adminEmail });
+      return;
+    }
+    
+    // Demo Mode Override
+    // Note: teams are not exposed directly in the context state, they are embedded in registrations or matches.
+    // In demo mode, this won't persist locally to a separate team state easily without a reload, but we'll log it.
+    addDemoAudit('UPDATE_STANDINGS', { teamId, played, wins, points });
+  };
+
   return (
     <TournamentContext.Provider
       value={{
@@ -791,7 +820,9 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         revertToLive,
         reschedule,
         overrideSlot,
-        updateSettings
+        updateSettings,
+        cancelM,
+        updateStandingsOverride
       }}
     >
       {children}

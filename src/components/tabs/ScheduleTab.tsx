@@ -22,7 +22,8 @@ export default function ScheduleTab() {
     getPlayers,
     reschedule, 
     startM, 
-    overrideSlot 
+    overrideSlot,
+    cancelM
   } = useTournament();
 
   const [viewMode, setViewMode] = useState<'list' | 'bracket'>('list');
@@ -204,12 +205,12 @@ export default function ScheduleTab() {
     const playerB2 = match.player_b2;
     
     const nameA = playerA ? playerA.full_name : 'TBD';
-    const nameA2 = playerA2 ? ` & ${playerA2.full_name}` : '';
+    const nameA2 = playerA2 && match.match_type === 'double' ? ` & ${playerA2.full_name}` : '';
     const displayA = `${nameA}${nameA2}`;
     const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
     
     const nameB = playerB ? playerB.full_name : 'TBD';
-    const nameB2 = playerB2 ? ` & ${playerB2.full_name}` : '';
+    const nameB2 = playerB2 && match.match_type === 'double' ? ` & ${playerB2.full_name}` : '';
     const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
     
@@ -347,6 +348,17 @@ export default function ScheduleTab() {
           {isAdmin && (
             <div className="flex gap-1.5">
               <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to completely cancel and delete this match?')) {
+                    cancelM(match.id);
+                  }
+                }}
+                className="bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 font-extrabold text-[9px] uppercase tracking-wider px-2 py-1.5 rounded-lg flex items-center gap-1 transition-all"
+                title="Cancel Match"
+              >
+                Cancel
+              </button>
+              <button
                 onClick={() => openRescheduleModal(match)}
                 className="bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 font-extrabold text-[9px] uppercase tracking-wider px-2 py-1.5 rounded-lg flex items-center gap-1 transition-all"
                 title="Reschedule Match"
@@ -470,6 +482,7 @@ export default function ScheduleTab() {
                     {roundMatches.map((m) => {
                       const nameA = m.player_a ? m.player_a.full_name : 'TBD';
                       const nameB = m.player_b ? m.player_b.full_name : 'TBD';
+                      
                       const isWinnerA = m.status === 'finished' && m.winner_id === m.player_a_id;
                       const isWinnerB = m.status === 'finished' && m.winner_id === m.player_b_id;
 
@@ -490,11 +503,14 @@ export default function ScheduleTab() {
 
                           {/* Player A slot */}
                           <div className="flex items-center justify-between">
-                            <span className={`font-semibold truncate max-w-[120px] ${
+                            <div className={`font-semibold leading-tight ${
                               isWinnerA ? 'text-[#22c55e] font-bold' : m.winner_id ? 'text-slate-500' : 'text-white'
                             }`}>
-                              {nameA}
-                            </span>
+                              <div className="truncate max-w-[120px]">{nameA}</div>
+                              {m.player_a2 && m.match_type === 'double' && (
+                                <div className="truncate max-w-[120px] text-[10px] text-slate-500 mt-0.5">{m.player_a2.full_name}</div>
+                              )}
+                            </div>
                             <span className={`font-bold ${isWinnerA ? 'text-[#22c55e]' : 'text-slate-400'}`}>
                               {m.score_a}
                             </span>
@@ -502,11 +518,14 @@ export default function ScheduleTab() {
 
                           {/* Player B slot */}
                           <div className="flex items-center justify-between">
-                            <span className={`font-semibold truncate max-w-[120px] ${
+                            <div className={`font-semibold leading-tight ${
                               isWinnerB ? 'text-[#22c55e] font-bold' : m.winner_id ? 'text-slate-500' : 'text-white'
                             }`}>
-                              {nameB}
-                            </span>
+                              <div className="truncate max-w-[120px]">{nameB}</div>
+                              {m.player_b2 && m.match_type === 'double' && (
+                                <div className="truncate max-w-[120px] text-[10px] text-slate-500 mt-0.5">{m.player_b2.full_name}</div>
+                              )}
+                            </div>
                             <span className={`font-bold ${isWinnerB ? 'text-[#22c55e]' : 'text-slate-400'}`}>
                               {m.score_b}
                             </span>
@@ -687,13 +706,23 @@ export default function ScheduleTab() {
             {(() => {
               const isGroupA = newMatchRound === 'group_a';
               const isGroupB = newMatchRound === 'group_b';
-              
+              const activePlayerIds = new Set<string>();
+              matches.forEach(m => {
+                if (m.status === 'scheduled' || m.status === 'live') {
+                  if (m.player_a_id) activePlayerIds.add(m.player_a_id);
+                  if (m.player_a2_id) activePlayerIds.add(m.player_a2_id);
+                  if (m.player_b_id) activePlayerIds.add(m.player_b_id);
+                  if (m.player_b2_id) activePlayerIds.add(m.player_b2_id);
+                }
+              });
+
               const filteredPlayers = playersList.filter(p => {
                 const t = p.team;
                 if (!t) return false;
                 if (t.category !== newMatchCategory) return false;
                 if (isGroupA && t.group_name !== 'group_a') return false;
                 if (isGroupB && t.group_name !== 'group_b') return false;
+                if (activePlayerIds.has(p.id)) return false;
                 return true;
               });
               
@@ -785,7 +814,7 @@ export default function ScheduleTab() {
                       disabled={!teamA}
                     >
                       <option value="" className="bg-[#0a160c] text-white">Player 2</option>
-                      {filteredPlayers.filter(p => p.team?.name === teamA).map(p => (
+                      {filteredPlayers.filter(p => p.team?.name === teamA && p.id !== newMatchPlayerA).map(p => (
                         <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                       ))}
                     </select>
@@ -839,7 +868,7 @@ export default function ScheduleTab() {
                       disabled={!teamB}
                     >
                       <option value="" className="bg-[#0a160c] text-white">Player 2</option>
-                      {filteredPlayers.filter(p => p.team?.name === teamB).map(p => (
+                      {filteredPlayers.filter(p => p.team?.name === teamB && p.id !== newMatchPlayerB).map(p => (
                         <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
                       ))}
                     </select>

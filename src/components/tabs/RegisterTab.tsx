@@ -391,7 +391,7 @@ export default function RegisterTab() {
                 </div>
 
                 <div className="mt-6 flex items-center justify-between text-[8px] text-slate-500 font-bold border-t border-white/5 pt-3">
-                  <span>MORA SLAMS 2026</span>
+                  <span>Mora Slam 2026</span>
                   <span className="bg-[#22c55e]/10 text-[#22c55e] px-1.5 py-0.5 rounded border border-[#22c55e]/15 uppercase tracking-wider font-extrabold">
                     Pending Seed
                   </span>

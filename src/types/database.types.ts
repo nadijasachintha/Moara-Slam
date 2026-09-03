@@ -12,6 +12,9 @@ export interface Team {
   leader_email: string;
   category: 'boys' | 'girls';
   group_name: 'group_a' | 'group_b';
+  manual_played?: number | null;
+  manual_wins?: number | null;
+  manual_points?: number | null;
   created_at: string;
   university?: University;
   players?: Player[];

@@ -243,7 +243,8 @@ export default function LiveScoresTab() {
     resumeM, 
     updateScore, 
     confirmWinner,
-    revertToLive
+    revertToLive,
+    cancelM
   } = useTournament();
 
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
@@ -349,10 +350,19 @@ export default function LiveScoresTab() {
 
   const renderUpcomingScoreCard = (match: Match, tableNum: number) => {
     const playerA = match.player_a;
+    const playerA2 = match.player_a2;
     const playerB = match.player_b;
+    const playerB2 = match.player_b2;
+    
     const nameA = playerA ? playerA.full_name : 'TBD';
+    const nameA2 = playerA2 && match.match_type === 'double' ? ` & ${playerA2.full_name}` : '';
+    const displayA = `${nameA}${nameA2}`;
+    
     const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    
     const nameB = playerB ? playerB.full_name : 'TBD';
+    const nameB2 = playerB2 && match.match_type === 'double' ? ` & ${playerB2.full_name}` : '';
+    const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
     const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -380,8 +390,13 @@ export default function LiveScoresTab() {
         {/* Central Matchup */}
         <div className="flex items-center justify-between gap-2 py-0.5">
           <div className="flex-1 text-center min-w-0">
-            <h4 className="font-extrabold text-white text-xs truncate leading-tight">{nameA}</h4>
-            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
+            <div className="font-extrabold text-white text-xs leading-tight">
+              <div className="truncate max-w-[100px] mx-auto">{nameA}</div>
+              {playerA2 && match.match_type === 'double' && (
+                <div className="truncate max-w-[100px] text-[10px] text-slate-400 mt-0.5 mx-auto">{playerA2.full_name}</div>
+              )}
+            </div>
+            <span className="text-[8px] text-slate-500 block truncate mt-1 uppercase tracking-wider">{uniA}</span>
           </div>
 
           <div className="flex flex-col items-center justify-center px-2 shrink-0">
@@ -391,8 +406,13 @@ export default function LiveScoresTab() {
           </div>
 
           <div className="flex-1 text-center min-w-0">
-            <h4 className="font-extrabold text-white text-xs truncate leading-tight">{nameB}</h4>
-            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
+            <div className="font-extrabold text-white text-xs leading-tight">
+              <div className="truncate max-w-[100px] mx-auto">{nameB}</div>
+              {playerB2 && match.match_type === 'double' && (
+                <div className="truncate max-w-[100px] text-[10px] text-slate-400 mt-0.5 mx-auto">{playerB2.full_name}</div>
+              )}
+            </div>
+            <span className="text-[8px] text-slate-500 block truncate mt-1 uppercase tracking-wider">{uniB}</span>
           </div>
         </div>
 
@@ -403,12 +423,24 @@ export default function LiveScoresTab() {
           </span>
 
           {isAdmin && (
-            <button
-              onClick={() => handleStart(match.id)}
-              className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all shadow-md"
-            >
-              <Play className="w-3 h-3 fill-slate-950" /> Start
-            </button>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to completely cancel and delete this match?')) {
+                    cancelM(match.id);
+                  }
+                }}
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-bold text-[9px] uppercase tracking-wider px-2 py-1 rounded-lg flex items-center gap-1 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleStart(match.id)}
+                className="bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-black text-[9px] uppercase tracking-wider px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all shadow-md"
+              >
+                <Play className="w-3 h-3 fill-slate-950" /> Start
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -417,11 +449,20 @@ export default function LiveScoresTab() {
 
   const renderCompletedScoreCard = (match: Match, tableNum: number) => {
     const playerA = match.player_a;
+    const playerA2 = match.player_a2;
     const playerB = match.player_b;
+    const playerB2 = match.player_b2;
     const winner = match.winner;
+    
     const nameA = playerA ? playerA.full_name : 'TBD';
+    const nameA2 = playerA2 && match.match_type === 'double' ? ` & ${playerA2.full_name}` : '';
+    const displayA = `${nameA}${nameA2}`;
+    
     const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    
     const nameB = playerB ? playerB.full_name : 'TBD';
+    const nameB2 = playerB2 && match.match_type === 'double' ? ` & ${playerB2.full_name}` : '';
+    const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
 
     return (
@@ -449,13 +490,18 @@ export default function LiveScoresTab() {
         <div className="flex items-center justify-between gap-2 py-0.5">
           {/* Player A */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className={`font-extrabold text-xs truncate leading-tight ${
+            <div className={`font-extrabold text-xs leading-tight ${
               winner?.id === playerA?.id ? 'text-[#22c55e]' : 'text-slate-400'
             }`}>
-              {nameA}
-              {winner?.id === playerA?.id && ' 🏆'}
-            </h4>
-            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
+              <div className="flex items-center justify-center gap-1">
+                <span className="truncate max-w-[100px]">{nameA}</span>
+                {winner?.id === playerA?.id && <span>🏆</span>}
+              </div>
+              {playerA2 && match.match_type === 'double' && (
+                <div className="truncate max-w-[100px] text-[10px] text-slate-500 mt-0.5 mx-auto">{playerA2.full_name}</div>
+              )}
+            </div>
+            <span className="text-[8px] text-slate-500 block truncate mt-1 uppercase tracking-wider">{uniA}</span>
           </div>
 
           {/* Centered Scores */}
@@ -470,13 +516,18 @@ export default function LiveScoresTab() {
 
           {/* Player B */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className={`font-extrabold text-xs truncate leading-tight ${
+            <div className={`font-extrabold text-xs leading-tight ${
               winner?.id === playerB?.id ? 'text-[#22c55e]' : 'text-slate-400'
             }`}>
-              {nameB}
-              {winner?.id === playerB?.id && ' 🏆'}
-            </h4>
-            <span className="text-[8px] text-slate-500 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
+              <div className="flex items-center justify-center gap-1">
+                <span className="truncate max-w-[100px]">{nameB}</span>
+                {winner?.id === playerB?.id && <span>🏆</span>}
+              </div>
+              {playerB2 && match.match_type === 'double' && (
+                <div className="truncate max-w-[100px] text-[10px] text-slate-500 mt-0.5 mx-auto">{playerB2.full_name}</div>
+              )}
+            </div>
+            <span className="text-[8px] text-slate-500 block truncate mt-1 uppercase tracking-wider">{uniB}</span>
           </div>
         </div>
 
@@ -509,11 +560,19 @@ export default function LiveScoresTab() {
   const renderLiveScoreCard = (match: Match, tableNum: number) => {
     const isExpanded = expandedMatchId === match.id;
     const playerA = match.player_a;
+    const playerA2 = match.player_a2;
     const playerB = match.player_b;
+    const playerB2 = match.player_b2;
 
     const nameA = playerA ? playerA.full_name : 'TBD';
+    const nameA2 = playerA2 && match.match_type === 'double' ? ` & ${playerA2.full_name}` : '';
+    const displayA = `${nameA}${nameA2}`;
+    
     const uniA = playerA ? (playerA.team as any)?.university?.name : 'N/A';
+    
     const nameB = playerB ? playerB.full_name : 'TBD';
+    const nameB2 = playerB2 && match.match_type === 'double' ? ` & ${playerB2.full_name}` : '';
+    const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
 
     return (
@@ -538,7 +597,7 @@ export default function LiveScoresTab() {
         <div className="flex items-center justify-between gap-2 py-1">
           {/* Player A */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameA}</h4>
+            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{displayA}</h4>
             <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
           </div>
 
@@ -554,7 +613,7 @@ export default function LiveScoresTab() {
 
           {/* Player B */}
           <div className="flex-1 text-center min-w-0">
-            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{nameB}</h4>
+            <h4 className="font-extrabold text-white text-sm truncate leading-tight">{displayB}</h4>
             <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
           </div>
         </div>
@@ -566,17 +625,29 @@ export default function LiveScoresTab() {
           </span>
 
           {isAdmin && (
-            <button
-              onClick={() => toggleExpand(match.id)}
-              className={`px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border transition-all flex items-center gap-1 ${
-                isExpanded 
-                  ? 'bg-[#22c55e] border-transparent text-slate-950'
-                  : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
-              }`}
-            >
-              <Settings className="w-3 h-3" />
-              {isExpanded ? 'Close Controls' : 'Referee'}
-            </button>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => {
+                  if (window.confirm('Are you sure you want to completely cancel and delete this match?')) {
+                    cancelM(match.id);
+                  }
+                }}
+                className="bg-red-500/10 hover:bg-red-500/20 text-red-500 border border-red-500/20 font-bold text-[9px] uppercase tracking-wider px-2 py-1 rounded-lg flex items-center gap-1 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => toggleExpand(match.id)}
+                className={`px-2.5 py-1 rounded-lg text-[9px] font-extrabold uppercase tracking-wider border transition-all flex items-center gap-1 ${
+                  isExpanded 
+                    ? 'bg-[#22c55e] border-transparent text-slate-950'
+                    : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10'
+                }`}
+              >
+                <Settings className="w-3 h-3" />
+                {isExpanded ? 'Close' : 'Referee'}
+              </button>
+            </div>
           )}
         </div>
 
@@ -598,8 +669,8 @@ export default function LiveScoresTab() {
                 confirmWinnerId={confirmWinnerId}
                 setConfirmWinnerId={setConfirmWinnerId}
                 submittingResult={submittingResult}
-                nameA={nameA}
-                nameB={nameB}
+                nameA={displayA}
+                nameB={displayB}
               />
             </motion.div>
           )}
@@ -614,7 +685,7 @@ export default function LiveScoresTab() {
       <div className="relative overflow-hidden bg-gradient-to-r from-[#0d1b2a] via-[#1b263b] to-[#0d1b2a] border border-white/5 p-5 rounded-3xl flex items-center justify-between">
         <div className="space-y-1 z-10">
           <span className="text-[9px] font-extrabold uppercase tracking-widest text-[#22c55e] bg-[#22c55e]/10 px-2 py-0.5 rounded-full">
-            Mora Slams Dashboard
+            Mora Slam Dashboard
           </span>
           <h2 className="text-xl font-extrabold text-white mt-1">Carrom Tournament</h2>
           <p className="text-[11px] text-slate-400">University of Moratuwa live match results and countdown timers.</p>

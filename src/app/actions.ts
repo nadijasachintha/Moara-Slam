@@ -170,20 +170,20 @@ export async function submitRegistration(payload: {
         const apiKey = process.env.RESEND_API_KEY;
         if (apiKey && !apiKey.includes('placeholder')) {
           await resend.emails.send({
-            from: 'Mora Slams <onboarding@resend.dev>',
+            from: 'Mora Slam <onboarding@resend.dev>',
             to: [payload.leaderEmail],
-            subject: 'Registration Approved - Mora Slams 2026',
+            subject: 'Registration Approved - Mora Slam 2026',
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
                 <div style="text-align: center; border-bottom: 1px solid rgba(34, 197, 94, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
-                  <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
+                  <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slam 2026</h2>
                   <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
                 </div>
                 
                 <h2 style="color: #22c55e; font-size: 18px; margin-top: 0;">Congratulations!</h2>
                 <p style="font-size: 14px; color: #cbd5e1;">Hi <strong>${payload.leaderName}</strong>,</p>
                 <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
-                  Your team <strong>${payload.teamName}</strong> from <strong>${universityName}</strong> has been officially approved to enter the Mora Slams Carrom Tournament.
+                  Your team <strong>${payload.teamName}</strong> from <strong>${universityName}</strong> has been officially approved to enter the Mora Slam Carrom Tournament.
                 </p>
                 <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
                   The knockout brackets, schedule tables, and schedules are updated live on the tournament dashboard. Be sure to check the scheduling page for match slots and assignments.
@@ -195,7 +195,7 @@ export async function submitRegistration(payload: {
 
                 <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
                 <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
-                  This is an automated notification from the Mora Slams Tournament Management System.
+                  This is an automated notification from the Mora Slam Tournament Management System.
                 </p>
               </div>
             `,
@@ -209,13 +209,13 @@ export async function submitRegistration(payload: {
         const apiKey = process.env.RESEND_API_KEY;
         if (apiKey && !apiKey.includes('placeholder')) {
           await resend.emails.send({
-            from: 'Mora Slams <onboarding@resend.dev>',
+            from: 'Mora Slam <onboarding@resend.dev>',
             to: [payload.leaderEmail],
-            subject: 'Registration Received - Mora Slams 2026',
+            subject: 'Registration Received - Mora Slam 2026',
             html: `
               <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
                 <div style="text-align: center; border-bottom: 1px solid rgba(245, 166, 35, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
-                  <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
+                  <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slam 2026</h2>
                   <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
                 </div>
                 
@@ -234,7 +234,7 @@ export async function submitRegistration(payload: {
 
                 <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
                 <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
-                  This is an automated notification from the Mora Slams Tournament Management System.
+                  This is an automated notification from the Mora Slam Tournament Management System.
                 </p>
               </div>
             `,
@@ -352,20 +352,20 @@ export async function approveRegistration(registrationId: string, adminEmail: st
     const apiKey = process.env.RESEND_API_KEY;
     if (apiKey && !apiKey.includes('placeholder')) {
       await resend.emails.send({
-        from: 'Mora Slams <onboarding@resend.dev>',
+        from: 'Mora Slam <onboarding@resend.dev>',
         to: [team.leader_email],
-        subject: 'Registration Approved - Mora Slams 2026',
+        subject: 'Registration Approved - Mora Slam 2026',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 12px; background-color: #060e08; color: #f8fafc;">
             <div style="text-align: center; border-bottom: 1px solid rgba(34, 197, 94, 0.2); padding-bottom: 15px; margin-bottom: 20px;">
-              <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slams 2026</h2>
+              <h2 style="color: #22c55e; margin: 0; font-size: 22px;">Mora Slam 2026</h2>
               <p style="color: #f5a623; margin: 5px 0 0 0; font-size: 12px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">University of Moratuwa</p>
             </div>
             
             <h2 style="color: #22c55e; font-size: 18px; margin-top: 0;">Congratulations!</h2>
             <p style="font-size: 14px; color: #cbd5e1;">Hi <strong>${team.leader_name}</strong>,</p>
             <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
-              Your team <strong>${team.name}</strong> from <strong>${team.university.name}</strong> has been officially approved to enter the Mora Slams Carrom Tournament.
+              Your team <strong>${team.name}</strong> from <strong>${team.university.name}</strong> has been officially approved to enter the Mora Slam Carrom Tournament.
             </p>
             <p style="font-size: 14px; color: #cbd5e1; line-height: 1.5;">
               The knockout brackets, schedule tables, and schedules are updated live on the tournament dashboard. Be sure to check the scheduling page for match slots and assignments.
@@ -377,7 +377,7 @@ export async function approveRegistration(registrationId: string, adminEmail: st
 
             <hr style="border: 0; border-top: 1px solid rgba(255,255,255,0.05); margin: 25px 0;" />
             <p style="font-size: 10px; color: #64748b; text-align: center; margin: 0;">
-              This is an automated notification from the Mora Slams Tournament Management System.
+              This is an automated notification from the Mora Slam Tournament Management System.
             </p>
           </div>
         `,
@@ -714,6 +714,40 @@ export async function overrideBracketMatchSlot(payload: {
     slot: payload.slot,
     playerId: payload.playerId,
   });
+  return { success: true };
+}
+
+// Cancel (Delete) Match
+export async function cancelMatch(payload: { matchId: string; adminEmail: string }) {
+  const adminClient = getSupabaseAdmin();
+  const { error } = await adminClient.from('matches').delete().eq('id', payload.matchId);
+  if (error) throw new Error(error.message);
+
+  await logAdminAction(payload.adminEmail, 'CANCEL_MATCH', { matchId: payload.matchId });
+  return { success: true };
+}
+
+// Update Manual Standings Overrides
+export async function updateTeamStandings(payload: {
+  teamId: string;
+  played: number | null;
+  wins: number | null;
+  points: number | null;
+  adminEmail: string;
+}) {
+  const adminClient = getSupabaseAdmin();
+  const { error } = await adminClient
+    .from('teams')
+    .update({
+      manual_played: payload.played,
+      manual_wins: payload.wins,
+      manual_points: payload.points,
+    })
+    .eq('id', payload.teamId);
+
+  if (error) throw new Error(error.message);
+
+  await logAdminAction(payload.adminEmail, 'UPDATE_STANDINGS', payload);
   return { success: true };
 }
 

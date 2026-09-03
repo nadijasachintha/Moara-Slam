@@ -4,8 +4,8 @@ import NavigationShell from "@/components/NavigationShell";
 import { TournamentProvider } from "@/context/TournamentContext";
 
 export const metadata: Metadata = {
-  title: "Mora Slams - University of Moratuwa Carrom Championship",
-  description: "Live scores, match schedules, brackets, registrations, and referee controls for the Mora Slams Carrom Tournament.",
+  title: "Mora Slam - University of Moratuwa Carrom Championship",
+  description: "Live scores, match schedules, brackets, registrations, and referee controls for the Mora Slam Carrom Tournament.",
 };
 
 export const viewport: Viewport = {

@@ -99,7 +99,7 @@ export default function NavigationShell({ children }: NavigationShellProps) {
           </div>
           <div>
             <h1 className="font-extrabold text-sm tracking-tight leading-none text-white">
-              Mora Slams
+              Mora Slam
             </h1>
             <span className="text-[9px] text-[#f5a623] font-bold tracking-wider uppercase">
               university of moratuwa
