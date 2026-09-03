@@ -461,7 +461,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     if (!isAdmin) throw new Error('Unauthorized');
     const res = await createManualMatch({ ...payload, adminEmail });
     if (res.success) {
-      await fetchMatches();
+      const mData = await getMatches();
+      setMatches(mData);
     }
   };
 
