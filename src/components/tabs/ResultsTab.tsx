@@ -400,10 +400,19 @@ export default function ResultsTab() {
       target[enc.teamAId].played += 1;
       target[enc.teamBId].played += 1;
       
+      // If a team won 3 matches and no doubles were played, give them 50 bonus points
+      const noDoublesPlayed = !enc.matches.some(m => m.match_type === 'double' && m.status === 'finished');
+      
       if (enc.matchWinsA > enc.matchWinsB) {
         target[enc.teamAId].wins += 1;
+        if (noDoublesPlayed && enc.matchWinsA >= 3) {
+          target[enc.teamAId].tieBreakerScore += 50;
+        }
       } else if (enc.matchWinsB > enc.matchWinsA) {
         target[enc.teamBId].wins += 1;
+        if (noDoublesPlayed && enc.matchWinsB >= 3) {
+          target[enc.teamBId].tieBreakerScore += 50;
+        }
       }
     }
   });
@@ -505,7 +514,7 @@ export default function ResultsTab() {
             <tr className="bg-slate-950/40 text-[10px] uppercase tracking-widest text-slate-400 font-extrabold">
               <th className="px-6 py-3 border-b border-white/5">Rank</th>
               <th className="px-6 py-3 border-b border-white/5">Team / University</th>
-              <th className="px-6 py-3 border-b border-white/5 text-center">Encounters Played</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Total Matches</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Wins</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Total Score (Tie-breaker)</th>
             </tr>
