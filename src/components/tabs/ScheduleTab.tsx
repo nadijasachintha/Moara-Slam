@@ -887,7 +887,7 @@ export default function ScheduleTab() {
                     {Array.from({length: 10}, (_, i) => i + 1).map(t => {
                       const isLive = matches.some(m => m.status === 'live' && m.table_number === t);
                       return (
-                        <option key={t} value={t} disabled={isLive}>
+                        <option key={t} value={t} disabled={isLive} className="bg-[#0a160c] text-white">
                           Board {t} {isLive ? '(In Use)' : ''}
                         </option>
                       );
@@ -900,7 +900,8 @@ export default function ScheduleTab() {
                     type="time"
                     value={newMatchTime}
                     onChange={(e) => setNewMatchTime(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all color-scheme-dark"
+                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
+                    style={{ colorScheme: 'dark' }}
                   />
                 </div>
               </div>
