@@ -544,10 +544,10 @@ export default function ResultsTab() {
                 <React.Fragment key={team.id}>
                   <tr 
                     onClick={() => {
-                      if (expandedTeamId === team.id) {
+                      if (expandedTeamId === `${groupKey}_${team.id}`) {
                         setExpandedTeamId(null);
                       } else {
-                        setExpandedTeamId(team.id);
+                        setExpandedTeamId(`${groupKey}_${team.id}`);
                         setExpandedEncounterId(null);
                       }
                     }}
@@ -557,7 +557,7 @@ export default function ResultsTab() {
                     <td className="px-6 py-4">
                       <div className="font-extrabold text-white text-sm flex items-center gap-2">
                         {team.teamName}
-                        {expandedTeamId === team.id ? (
+                        {expandedTeamId === `${groupKey}_${team.id}` ? (
                           <span className="text-[9px] bg-white/10 text-white px-2 py-0.5 rounded-full border border-white/10 uppercase tracking-widest">Hide Matches</span>
                         ) : (
                           <span className="text-[9px] bg-[#22c55e]/10 text-[#22c55e] border border-[#22c55e]/20 px-2 py-0.5 rounded-full uppercase tracking-widest">View Matches</span>
@@ -570,7 +570,7 @@ export default function ResultsTab() {
                     <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.tieBreakerScore} pts</td>
                   </tr>
                   
-                  {expandedTeamId === team.id && (
+                  {expandedTeamId === `${groupKey}_${team.id}` && (
                     <tr>
                       <td colSpan={5} className="p-0 bg-black/20">
                         <div className="p-4 bg-gradient-to-b from-black/40 to-transparent">
