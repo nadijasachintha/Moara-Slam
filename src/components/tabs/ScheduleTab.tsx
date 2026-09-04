@@ -59,7 +59,6 @@ export default function ScheduleTab() {
   const [newMatchPlayerB2, setNewMatchPlayerB2] = useState('');
   
   const [newMatchTable, setNewMatchTable] = useState(1);
-  const [newMatchTime, setNewMatchTime] = useState('');
 
   // Load players when opening create modal
   const handleOpenCreateModal = async () => {
@@ -67,11 +66,6 @@ export default function ScheduleTab() {
       const p = await getPlayers();
       setPlayersList(p);
       setShowCreateModal(true);
-      // Set default time to now (HH:mm format for time input)
-      const localDate = new Date();
-      const tzOffset = localDate.getTimezoneOffset() * 60000;
-      const localTimeString = new Date(localDate.getTime() - tzOffset).toISOString().slice(11, 16);
-      setNewMatchTime(localTimeString);
       
       // Select first available valid board (not live)
       const liveTables = matches.filter(m => m.status === 'live').map(m => m.table_number);
@@ -99,10 +93,6 @@ export default function ScheduleTab() {
     
     setCreatingMatch(true);
     try {
-      // Build an ISO string using today's date and the selected time
-      const todayStr = new Date().toISOString().split('T')[0];
-      const scheduledIso = `${todayStr}T${newMatchTime}:00.000Z`;
-
       await createMatch({
         round: newMatchRound,
         category: newMatchCategory,
@@ -112,7 +102,7 @@ export default function ScheduleTab() {
         playerBId: newMatchPlayerB,
         playerB2Id: newMatchType === 'double' ? newMatchPlayerB2 : null,
         tableNumber: newMatchTable,
-        scheduledTime: scheduledIso
+        scheduledTime: new Date().toISOString()
       });
       setShowCreateModal(false);
       setNewMatchPlayerA('');
@@ -139,17 +129,13 @@ export default function ScheduleTab() {
   const openRescheduleModal = (match: Match) => {
     setReschedulingMatchId(match.id);
     setNewTable(match.table_number);
-    const localDate = new Date(match.scheduled_time);
-    const tzOffset = localDate.getTimezoneOffset() * 60000;
-    const localISOTime = new Date(localDate.getTime() - tzOffset).toISOString().slice(0, 16);
-    setNewTime(localISOTime);
   };
 
   const saveRescheduleAction = async () => {
     if (!reschedulingMatchId) return;
     setSavingReschedule(true);
     try {
-      await reschedule(reschedulingMatchId, newTable, new Date(newTime).toISOString());
+      await reschedule(reschedulingMatchId, newTable, new Date().toISOString());
       setReschedulingMatchId(null);
     } catch (err: any) {
       alert(err.message || 'Error saving schedule updates');
@@ -184,20 +170,6 @@ export default function ScheduleTab() {
 
   const activeRounds = roundOrder.filter((r) => groupedByRound[r] && groupedByRound[r].length > 0);
 
-  // Group matches by scheduled_time for batch display in chronological list view
-  const matchesByTime: { [time: string]: Match[] } = {};
-  matches.forEach((m) => {
-    const timeKey = m.scheduled_time;
-    if (!matchesByTime[timeKey]) {
-      matchesByTime[timeKey] = [];
-    }
-    matchesByTime[timeKey].push(m);
-  });
-
-  const sortedTimes = Object.keys(matchesByTime).sort(
-    (a, b) => new Date(a).getTime() - new Date(b).getTime()
-  );
-
   const renderScoreCard = (match: Match) => {
     const playerA = match.player_a;
     const playerA2 = match.player_a2;
@@ -213,8 +185,6 @@ export default function ScheduleTab() {
     const nameB2 = playerB2 && match.match_type === 'double' ? ` & ${playerB2.full_name}` : '';
     const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
-    
-    const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     const isBye = match.status === 'finished' && (match.player_a_id === null || match.player_b_id === null);
     const isTBD = match.player_a_id === null || match.player_b_id === null;
@@ -294,7 +264,6 @@ export default function ScheduleTab() {
             : 'border-white/5'
         }`}
       >
-        {/* Card Header (Table & Status & Scheduled Time) */}
         <div className="flex items-center justify-between border-b border-white/5 pb-2">
           <div className="flex items-center gap-2">
             <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2.5 py-0.5 rounded-full border border-white/5 text-slate-300">
@@ -311,35 +280,26 @@ export default function ScheduleTab() {
               {match.status}
             </span>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-            <Clock className="w-3.5 h-3.5 text-[#22c55e]" />
-            {timeStr}
-          </span>
         </div>
 
-        {/* Central Display */}
         <div className="flex items-center justify-between gap-2 py-1">
-          {/* Player A */}
           <div className="flex-1 text-center min-w-0">
             <h4 className="font-extrabold text-white text-xs truncate leading-tight">{displayA}</h4>
             <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniA}</span>
           </div>
 
-          {/* Central VS */}
           <div className="flex flex-col items-center justify-center px-3 shrink-0">
             <span className="text-[10px] font-extrabold bg-[#22c55e]/10 border border-[#22c55e]/20 text-[#22c55e] px-2.5 py-0.5 rounded-full uppercase tracking-widest text-center leading-none">
               VS
             </span>
           </div>
 
-          {/* Player B */}
           <div className="flex-1 text-center min-w-0">
             <h4 className="font-extrabold text-white text-xs truncate leading-tight">{displayB}</h4>
             <span className="text-[9px] text-slate-400 block truncate mt-0.5 uppercase tracking-wider">{uniB}</span>
           </div>
         </div>
 
-        {/* Card Footer (Round Details & Admin actions) */}
         <div className="flex items-center justify-between pt-1 border-t border-white/5">
           <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">
             {match.round.replace('_', ' ')}
@@ -383,7 +343,6 @@ export default function ScheduleTab() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h2 className="text-xl font-extrabold text-white">Matches & Brackets</h2>
@@ -414,7 +373,6 @@ export default function ScheduleTab() {
         </div>
       </div>
 
-      {/* Admin Actions */}
       {isAdmin && (
         <div className="flex justify-end">
           <button
@@ -425,37 +383,12 @@ export default function ScheduleTab() {
           </button>
         </div>
       )}
-      {/* VIEW MODE: CHRONOLOGICAL LIST */}
       {viewMode === 'list' && matches.length > 0 && (
-        <div className="space-y-8">
-          {sortedTimes.map((timeKey, idx) => {
-            const timeMatches = matchesByTime[timeKey].sort((a, b) => a.table_number - b.table_number);
-            const timeDate = new Date(timeKey);
-            const timeStr = timeDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-            const dateStr = timeDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
-
-            return (
-              <div key={timeKey} className="space-y-3.5">
-                <div className="flex items-center justify-between border-b border-white/10 pb-2 px-1">
-                  <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-200 flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[#22c55e]" />
-                    Batch {idx + 1} — {timeStr}
-                  </h3>
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                    {timeMatches.length} Boards Allocated
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {timeMatches.map(renderScoreCard)}
-                </div>
-              </div>
-            );
-          })}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {matches.map(renderScoreCard)}
         </div>
       )}
 
-      {/* VIEW MODE: VISUAL KNOCKOUT BRACKET */}
       {viewMode === 'bracket' && matches.length > 0 && (
         <div className="w-full overflow-x-auto pb-6 select-none">
           <div className="flex gap-8 px-2 min-w-[800px] justify-between">
@@ -467,7 +400,6 @@ export default function ScheduleTab() {
 
               return (
                 <div key={roundKey} className="flex-1 flex flex-col gap-6">
-                  {/* Round Heading */}
                   <div className="text-center border-b border-white/5 pb-2">
                     <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-300">
                       {roundTitle}
@@ -477,7 +409,6 @@ export default function ScheduleTab() {
                     </span>
                   </div>
 
-                  {/* Round Matches List */}
                   <div className="flex-1 flex flex-col justify-around gap-6 py-4">
                     {roundMatches.map((m) => {
                       const nameA = m.player_a ? m.player_a.full_name : 'TBD';
@@ -495,13 +426,10 @@ export default function ScheduleTab() {
                               : 'border-white/5'
                           }`}
                         >
-                          {/* Round Match Metadata */}
                           <div className="flex justify-between items-center text-[9px] text-slate-500 font-bold border-b border-white/5 pb-1">
                             <span>B-{m.table_number}</span>
-                            <span>{new Date(m.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
 
-                          {/* Player A slot */}
                           <div className="flex items-center justify-between">
                             <div className={`font-semibold leading-tight ${
                               isWinnerA ? 'text-[#22c55e] font-bold' : m.winner_id ? 'text-slate-500' : 'text-white'
@@ -516,7 +444,6 @@ export default function ScheduleTab() {
                             </span>
                           </div>
 
-                          {/* Player B slot */}
                           <div className="flex items-center justify-between">
                             <div className={`font-semibold leading-tight ${
                               isWinnerB ? 'text-[#22c55e] font-bold' : m.winner_id ? 'text-slate-500' : 'text-white'
@@ -531,7 +458,6 @@ export default function ScheduleTab() {
                             </span>
                           </div>
 
-                          {/* Admin manual slot overrides */}
                           {isAdmin && (
                             <div className="flex items-center justify-between pt-1 border-t border-white/5">
                               <span className="text-[8px] text-[#22c55e] font-semibold">OVERRIDE:</span>
@@ -568,7 +494,6 @@ export default function ScheduleTab() {
         </div>
       )}
 
-      {/* RESCHEDULING DIALOG */}
       {reschedulingMatchId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-sm glass-panel rounded-2xl p-6 border border-white/10 animate-in fade-in zoom-in duration-200">
@@ -597,16 +522,6 @@ export default function ScheduleTab() {
                 />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-bold text-slate-300 uppercase mb-1">Match Scheduled Time</label>
-                <input
-                  type="datetime-local"
-                  value={newTime}
-                  onChange={(e) => setNewTime(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none transition-all color-scheme-dark"
-                />
-              </div>
-
               <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setReschedulingMatchId(null)}
@@ -631,7 +546,6 @@ export default function ScheduleTab() {
         </div>
       )}
 
-      {/* MANUAL OVERRIDE DIALOG */}
       {overridingMatchId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-sm glass-panel rounded-2xl p-6 border border-white/10 animate-in fade-in zoom-in duration-200">
@@ -686,7 +600,7 @@ export default function ScheduleTab() {
           </div>
         </div>
       )}
-      {/* CREATE MATCH MODAL */}
+
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
           <div className="w-full max-w-lg glass-panel rounded-3xl p-6 border border-white/10 animate-in fade-in zoom-in duration-200">
@@ -702,7 +616,6 @@ export default function ScheduleTab() {
               </button>
             </div>
             
-            {/* Compute visible universities based on round and category */}
             {(() => {
               const isGroupA = newMatchRound === 'group_a';
               const isGroupB = newMatchRound === 'group_b';
@@ -768,7 +681,6 @@ export default function ScheduleTab() {
                 </div>
               </div>
 
-              {/* TEAM A SELECTION */}
               <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
                 <h4 className="text-xs font-bold text-[#22c55e] uppercase tracking-widest">Competitor A</h4>
                 <div className="grid grid-cols-2 gap-3">
@@ -822,7 +734,6 @@ export default function ScheduleTab() {
                 </div>
               </div>
 
-              {/* TEAM B SELECTION */}
               <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
                 <h4 className="text-xs font-bold text-amber-400 uppercase tracking-widest">Competitor B</h4>
                 <div className="grid grid-cols-2 gap-3">
@@ -876,34 +787,22 @@ export default function ScheduleTab() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Board Number</label>
-                  <select
-                    value={newMatchTable}
-                    onChange={(e) => setNewMatchTable(parseInt(e.target.value))}
-                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
-                  >
-                    {Array.from({length: 16}, (_, i) => i + 1).map(t => {
-                      const isLive = matches.some(m => m.status === 'live' && m.table_number === t);
-                      return (
-                        <option key={t} value={t} disabled={isLive} className="bg-[#0a160c] text-white">
-                          Board {t} {isLive ? '(In Use)' : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Scheduled Time</label>
-                  <input
-                    type="time"
-                    value={newMatchTime}
-                    onChange={(e) => setNewMatchTime(e.target.value)}
-                    className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
-                    style={{ colorScheme: 'dark' }}
-                  />
-                </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Board Number</label>
+                <select
+                  value={newMatchTable}
+                  onChange={(e) => setNewMatchTable(parseInt(e.target.value))}
+                  className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
+                >
+                  {Array.from({length: 16}, (_, i) => i + 1).map(t => {
+                    const isLive = matches.some(m => m.status === 'live' && m.table_number === t);
+                    return (
+                      <option key={t} value={t} disabled={isLive} className="bg-[#0a160c] text-white">
+                        Board {t} {isLive ? '(In Use)' : ''}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
 
               <div className="flex gap-3 pt-4 border-t border-white/5">

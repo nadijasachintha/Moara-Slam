@@ -369,7 +369,6 @@ export default function LiveScoresTab() {
     const nameB2 = playerB2 && match.match_type === 'double' ? ` & ${playerB2.full_name}` : '';
     const displayB = `${nameB}${nameB2}`;
     const uniB = playerB ? (playerB.team as any)?.university?.name : 'N/A';
-    const timeStr = new Date(match.scheduled_time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     return (
       <div 
@@ -386,10 +385,6 @@ export default function LiveScoresTab() {
               Scheduled
             </span>
           </div>
-          <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-            <Clock className="w-3 h-3 text-amber-400" />
-            {timeStr}
-          </span>
         </div>
 
         {/* Central Matchup */}
