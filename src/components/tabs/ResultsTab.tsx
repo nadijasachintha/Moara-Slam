@@ -655,8 +655,8 @@ export default function ResultsTab() {
                                                       {statusTag}
                                                     </div>
                                                     <div className="text-[10px] font-bold text-white flex flex-col gap-0.5">
-                                                      <div><span className="text-slate-400">Us:</span> <span className="truncate">{myNameA}</span> {myNameA2 && <span className="truncate">& {myNameA2}</span>}</div>
-                                                      <div><span className="text-slate-400">Them:</span> <span className="truncate">{oppNameB}</span> {oppNameB2 && <span className="truncate">& {oppNameB2}</span>}</div>
+                                                      <div><span className="text-slate-400">{team.teamName}:</span> <span className="truncate">{myNameA}</span> {myNameA2 && <span className="truncate">& {myNameA2}</span>}</div>
+                                                      <div><span className="text-slate-400">{oppTeamName}:</span> <span className="truncate">{oppNameB}</span> {oppNameB2 && <span className="truncate">& {oppNameB2}</span>}</div>
                                                     </div>
                                                   </div>
                                                   <div className="shrink-0 ml-3 text-right">
