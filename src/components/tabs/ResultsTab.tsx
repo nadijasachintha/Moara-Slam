@@ -685,12 +685,23 @@ export default function ResultsTab() {
   return (
     <div className="space-y-6">
       {/* Header & Gender Toggle */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-xl font-extrabold text-white">Championship Results</h2>
-          <p className="text-xs text-slate-400 mt-0.5">Explore group standings, knockouts, and completed matchups.</p>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tight">Tournament Results</h2>
+          <p className="text-slate-400 mt-1 font-medium">Live standings and bracket progression</p>
         </div>
-        
+      </div>
+      
+      {/* TEMPORARY DEBUG BANNER */}
+      <div className="bg-red-500/20 border border-red-500 p-4 rounded-xl mb-6 text-white font-mono text-xs overflow-auto max-h-60">
+        <p className="font-bold text-red-400 mb-2">DEBUG INFO (Please tell me what numbers you see here for tieBreakerScore):</p>
+        {JSON.stringify(
+          Object.values(groupAStandings).map(t => ({ name: t.teamName, pts: t.tieBreakerScore, played: t.played, manualPts: t.manual_points })), 
+          null, 2
+        )}
+      </div>
+
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 shrink-0">
           <button
             onClick={() => { setActiveCategory('boys'); setExpandedTeamId(null); setExpandedMatchId(null); }}
