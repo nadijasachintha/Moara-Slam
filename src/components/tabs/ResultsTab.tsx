@@ -21,7 +21,8 @@ export default function ResultsTab() {
 
   useEffect(() => {
     getPlayers().then(setPlayersList);
-  }, [getPlayers]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
   const [expandedTeamId, setExpandedTeamId] = useState<string | null>(null);
   const [expandedEncounterId, setExpandedEncounterId] = useState<string | null>(null);
@@ -289,9 +290,9 @@ export default function ResultsTab() {
     if (p.team && p.team.category === activeCategory) {
       const t = p.team;
       const target = t.group_name === 'group_a' ? groupAStandings : groupBStandings;
-      if (!target[t.id]) {
-        target[t.id] = {
-          id: t.id,
+      if (!target[p.team_id]) {
+        target[p.team_id] = {
+          id: p.team_id,
           teamName: t.name,
           uniName: t.university?.name || 'Unknown',
           played: 0,
