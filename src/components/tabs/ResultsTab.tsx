@@ -66,6 +66,8 @@ export default function ResultsTab() {
           t.rank === '' || t.rank === undefined || t.rank === null ? null : t.rank
         );
       }
+      const updatedPlayers = await getPlayers();
+      setPlayersList(updatedPlayers);
       setEditingGroup(null);
     } catch (err: any) {
       alert(err.message || 'Error updating standings');
