@@ -259,6 +259,21 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             })
           );
         })
+        .on('broadcast', { event: 'optimistic_confirm_winner' }, (payload: any) => {
+          const { matchId, winnerId } = payload.payload;
+          setMatches((prevMatches) => {
+            const list = [...prevMatches];
+            const mIdx = list.findIndex(m => m.id === matchId);
+            if (mIdx !== -1) {
+              const match = { ...list[mIdx] };
+              match.status = 'finished';
+              match.winner_id = winnerId;
+              match.winner = match.player_a_id === winnerId ? match.player_a : match.player_b;
+              list[mIdx] = match;
+            }
+            return list;
+          });
+        })
         .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, async (payload: any) => {
           const oldMatch = payload.old;
           const newMatch = payload.new;
@@ -627,6 +642,15 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         }
       }
       setMatches(list);
+
+      // Broadcast instant update to all other connected clients
+      if (syncChannel) {
+        syncChannel.send({
+          type: 'broadcast',
+          event: 'optimistic_confirm_winner',
+          payload: { matchId, winnerId }
+        });
+      }
     }
 
     // 2. Database update in background

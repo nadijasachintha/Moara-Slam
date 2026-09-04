@@ -75,7 +75,7 @@ export default function ScheduleTab() {
       
       // Select first available valid board (not live)
       const liveTables = matches.filter(m => m.status === 'live').map(m => m.table_number);
-      const availableTables = Array.from({length: 10}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
+      const availableTables = Array.from({length: 16}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
       setNewMatchTable(availableTables.length > 0 ? availableTables[0] : 1);
       
     } catch (err: any) {
@@ -884,7 +884,7 @@ export default function ScheduleTab() {
                     onChange={(e) => setNewMatchTable(parseInt(e.target.value))}
                     className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
                   >
-                    {Array.from({length: 10}, (_, i) => i + 1).map(t => {
+                    {Array.from({length: 16}, (_, i) => i + 1).map(t => {
                       const isLive = matches.some(m => m.status === 'live' && m.table_number === t);
                       return (
                         <option key={t} value={t} disabled={isLive} className="bg-[#0a160c] text-white">
