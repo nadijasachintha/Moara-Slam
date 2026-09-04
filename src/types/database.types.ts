@@ -15,6 +15,7 @@ export interface Team {
   manual_played?: number | null;
   manual_wins?: number | null;
   manual_points?: number | null;
+  manual_rank?: number | null;
   created_at: string;
   university?: University;
   players?: Player[];

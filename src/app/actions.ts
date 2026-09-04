@@ -733,6 +733,7 @@ export async function updateTeamStandings(payload: {
   played: number | null;
   wins: number | null;
   points: number | null;
+  rank: number | null;
   adminEmail: string;
 }) {
   const adminClient = getSupabaseAdmin();
@@ -742,6 +743,7 @@ export async function updateTeamStandings(payload: {
       manual_played: payload.played,
       manual_wins: payload.wins,
       manual_points: payload.points,
+      manual_rank: payload.rank,
     })
     .eq('id', payload.teamId);
 

@@ -39,7 +39,8 @@ export default function ResultsTab() {
       teamName: t.teamName,
       played: t.played,
       wins: t.wins,
-      points: t.tieBreakerScore
+      points: t.tieBreakerScore,
+      rank: t.manual_rank
     })));
   };
 
@@ -60,7 +61,8 @@ export default function ResultsTab() {
           t.id, 
           t.played === '' ? null : t.played,
           t.wins === '' ? null : t.wins,
-          t.points === '' ? null : t.points
+          t.points === '' ? null : t.points,
+          t.rank === '' || t.rank === undefined || t.rank === null ? null : t.rank
         );
       }
       setEditingGroup(null);
@@ -298,7 +300,8 @@ export default function ResultsTab() {
           encounterMatches: [],
           manual_played: t.manual_played ?? null,
           manual_wins: t.manual_wins ?? null,
-          manual_points: t.manual_points ?? null
+          manual_points: t.manual_points ?? null,
+          manual_rank: t.manual_rank ?? null
         };
       }
     }
@@ -374,7 +377,8 @@ export default function ResultsTab() {
         played: 0, wins: 0, tieBreakerScore: 0, encounterMatches: [],
         manual_played: enc.teamAObj?.manual_played ?? null,
         manual_wins: enc.teamAObj?.manual_wins ?? null,
-        manual_points: enc.teamAObj?.manual_points ?? null
+        manual_points: enc.teamAObj?.manual_points ?? null,
+        manual_rank: enc.teamAObj?.manual_rank ?? null
       };
     }
     // Initialize Team B
@@ -384,7 +388,8 @@ export default function ResultsTab() {
         played: 0, wins: 0, tieBreakerScore: 0, encounterMatches: [],
         manual_played: enc.teamBObj?.manual_played ?? null,
         manual_wins: enc.teamBObj?.manual_wins ?? null,
-        manual_points: enc.teamBObj?.manual_points ?? null
+        manual_points: enc.teamBObj?.manual_points ?? null,
+        manual_rank: enc.teamBObj?.manual_rank ?? null
       };
     }
     
@@ -430,8 +435,15 @@ export default function ResultsTab() {
     if (t.manual_points !== null && t.manual_points !== undefined) t.tieBreakerScore = t.manual_points;
   });
 
-  const sortedGroupA = Object.values(groupAStandings).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore);
-  const sortedGroupB = Object.values(groupBStandings).sort((a, b) => b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore);
+  const sortTeams = (a: any, b: any) => {
+    if (a.manual_rank !== null && a.manual_rank !== undefined && b.manual_rank !== null && b.manual_rank !== undefined) return a.manual_rank - b.manual_rank;
+    if (a.manual_rank !== null && a.manual_rank !== undefined) return -1;
+    if (b.manual_rank !== null && b.manual_rank !== undefined) return 1;
+    return b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore;
+  };
+
+  const sortedGroupA = Object.values(groupAStandings).sort(sortTeams);
+  const sortedGroupB = Object.values(groupBStandings).sort(sortTeams);
 
   // Auto-generate Semi-Final Bracket Matches based on Standings
   const autoBracketMatches: any[] = [];
@@ -746,6 +758,7 @@ export default function ResultsTab() {
                       <th className="pb-3 border-b border-white/5 text-center">Played</th>
                       <th className="pb-3 border-b border-white/5 text-center">Wins</th>
                       <th className="pb-3 border-b border-white/5 text-center">Total Points</th>
+                      <th className="pb-3 border-b border-white/5 text-center">Rank</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -776,6 +789,15 @@ export default function ResultsTab() {
                             value={team.points === null ? '' : team.points}
                             onChange={(e) => handleStandingsChange(team.id, 'points', e.target.value)}
                             className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-center text-white focus:outline-none focus:border-[#22c55e]"
+                            placeholder="Auto"
+                          />
+                        </td>
+                        <td className="py-4 px-2">
+                          <input
+                            type="number"
+                            value={team.rank === null || team.rank === undefined ? '' : team.rank}
+                            onChange={(e) => handleStandingsChange(team.id, 'rank', e.target.value)}
+                            className="w-full bg-slate-900/50 border border-white/10 rounded-lg px-3 py-2 text-center text-amber-400 focus:outline-none focus:border-amber-400 font-black"
                             placeholder="Auto"
                           />
                         </td>
