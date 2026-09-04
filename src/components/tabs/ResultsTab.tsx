@@ -537,10 +537,15 @@ export default function ResultsTab() {
           <tbody className="divide-y divide-white/5">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-xs text-slate-500">No teams have played in this group yet.</td>
+                <td colSpan={5} className="px-6 py-8 text-center text-slate-500 font-bold">No teams registered for this group yet.</td>
               </tr>
             ) : (
-              data.map((team, idx) => (
+              data.map((team, idx) => {
+                if (expandedTeamId && expandedTeamId !== `${groupKey}_${team.id}`) {
+                  return null;
+                }
+                
+                return (
                 <React.Fragment key={team.id}>
                   <tr 
                     onClick={() => {
@@ -667,7 +672,8 @@ export default function ResultsTab() {
                     </tr>
                   )}
                 </React.Fragment>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -709,9 +715,9 @@ export default function ResultsTab() {
       </div>
 
       {/* Group Standings */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 mt-6">
-        {renderStandingsTable('Group A', sortedGroupA, 'group_a')}
-        {renderStandingsTable('Group B', sortedGroupB, 'group_b')}
+      <div className={`grid grid-cols-1 ${expandedTeamId ? '' : 'xl:grid-cols-2'} gap-6 mt-6`}>
+        {(!expandedTeamId || expandedTeamId.startsWith('group_a_')) && renderStandingsTable('Group A', sortedGroupA, 'group_a')}
+        {(!expandedTeamId || expandedTeamId.startsWith('group_b_')) && renderStandingsTable('Group B', sortedGroupB, 'group_b')}
       </div>
 
       {/* Bracket View (Only Knockout Matches) */}
