@@ -516,7 +516,7 @@ export default function ResultsTab() {
               <th className="px-6 py-3 border-b border-white/5">Team / University</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Total Matches</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Wins</th>
-              <th className="px-6 py-3 border-b border-white/5 text-center">Total Score (Tie-breaker)</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Total Score</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
@@ -745,7 +745,7 @@ export default function ResultsTab() {
                       <th className="pb-3 border-b border-white/5">Team</th>
                       <th className="pb-3 border-b border-white/5 text-center">Played</th>
                       <th className="pb-3 border-b border-white/5 text-center">Wins</th>
-                      <th className="pb-3 border-b border-white/5 text-center">Tie-Breaker Points</th>
+                      <th className="pb-3 border-b border-white/5 text-center">Total Points</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
