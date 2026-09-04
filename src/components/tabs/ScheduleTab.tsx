@@ -75,7 +75,7 @@ export default function ScheduleTab() {
       
       // Select first available valid board (not live)
       const liveTables = matches.filter(m => m.status === 'live').map(m => m.table_number);
-      const availableTables = Array.from({length: 16}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
+      const availableTables = Array.from({length: 10}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
       setNewMatchTable(availableTables.length > 0 ? availableTables[0] : 1);
       
     } catch (err: any) {
