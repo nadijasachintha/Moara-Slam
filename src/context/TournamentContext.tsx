@@ -623,15 +623,16 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     const list = [...matches];
     const mIdx = list.findIndex(m => m.id === matchId);
     if (mIdx !== -1) {
-      const match = list[mIdx];
+      const match = { ...list[mIdx] };
       match.status = 'finished';
       match.winner_id = winnerId;
       match.winner = match.player_a_id === winnerId ? match.player_a : match.player_b;
 
-      // Progress winner
-      if (match.next_match_id && match.next_match_player_slot) {
-        const parent = list.find(pm => pm.id === match.next_match_id);
-        if (parent) {
+      // Update next match if it's a bracket tournament
+      if (match.next_match_id) {
+        const parentIdx = list.findIndex(m => m.id === match.next_match_id);
+        if (parentIdx !== -1) {
+          const parent = { ...list[parentIdx] };
           if (match.next_match_player_slot === 'A') {
             parent.player_a_id = winnerId;
             parent.player_a = match.winner;
@@ -639,8 +640,10 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
             parent.player_b_id = winnerId;
             parent.player_b = match.winner;
           }
+          list[parentIdx] = parent;
         }
       }
+      list[mIdx] = match;
       setMatches(list);
 
       // Broadcast instant update to all other connected clients

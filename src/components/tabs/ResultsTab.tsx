@@ -347,9 +347,9 @@ export default function ResultsTab() {
       const enc = encounters[encounterId];
       enc.matches.push(m);
       
-      // Calculate scores
-      const scoreForT1 = isAFirst ? m.score_a : m.score_b;
-      const scoreForT2 = isAFirst ? m.score_b : m.score_a;
+      // Calculate scores (parse as int to ensure no string concatenation)
+      const scoreForT1 = parseInt((isAFirst ? m.score_a : m.score_b) as any, 10) || 0;
+      const scoreForT2 = parseInt((isAFirst ? m.score_b : m.score_a) as any, 10) || 0;
       
       if (m.status === 'finished') {
         enc.totalScoreA += scoreForT1;
