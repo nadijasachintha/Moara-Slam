@@ -400,23 +400,21 @@ export default function ResultsTab() {
     target[enc.teamAId].tieBreakerScore += enc.totalScoreA;
     target[enc.teamBId].tieBreakerScore += enc.totalScoreB;
 
-    // Track played and wins based on INDIVIDUAL matches
-    target[enc.teamAId].played += enc.finishedMatches;
-    target[enc.teamBId].played += enc.finishedMatches;
-    target[enc.teamAId].wins += enc.matchWinsA;
-    target[enc.teamBId].wins += enc.matchWinsB;
-
     // Has the encounter finished? (A team reached 3 wins, or 5 matches completed)
     if (enc.matchWinsA >= 3 || enc.matchWinsB >= 3 || enc.finishedMatches === 5) {
+      target[enc.teamAId].played += 1;
+      target[enc.teamBId].played += 1;
       
       // If a team won 3 matches and no doubles were played, give them 50 bonus points
       const noDoublesPlayed = !enc.matches.some(m => m.match_type === 'double' && m.status === 'finished');
       
       if (enc.matchWinsA > enc.matchWinsB) {
+        target[enc.teamAId].wins += 1;
         if (noDoublesPlayed && enc.matchWinsA >= 3) {
           target[enc.teamAId].tieBreakerScore += 50;
         }
       } else if (enc.matchWinsB > enc.matchWinsA) {
+        target[enc.teamBId].wins += 1;
         if (noDoublesPlayed && enc.matchWinsB >= 3) {
           target[enc.teamBId].tieBreakerScore += 50;
         }
