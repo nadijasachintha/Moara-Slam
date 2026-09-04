@@ -700,25 +700,6 @@ export default function ResultsTab() {
           <p className="text-slate-400 mt-1 font-medium">Live standings and bracket progression</p>
         </div>
       </div>
-      
-      {/* TEMPORARY DEBUG BANNER */}
-      <div className="bg-red-500/20 border border-red-500 p-4 rounded-xl mb-6 text-white font-mono text-xs overflow-auto max-h-60">
-        <p className="font-bold text-red-400 mb-2">DEBUG INFO (Please tell me what you see here):</p>
-        <div>Matches finished count: {categoryMatches.filter(m => m.status === 'finished').length}</div>
-        {categoryMatches.filter(m => m.status === 'finished').slice(0, 1).map(m => (
-          <div key={m.id}>
-            Match ID: {m.id} | Round: {m.round} | Status: {m.status} | 
-            Score A: {m.score_a} | Score B: {m.score_b} |
-            Has pA: {m.player_a ? 'Yes' : 'No'} | Has pB: {m.player_b ? 'Yes' : 'No'} |
-            pA Team: {m.player_a?.team_id || 'null'} | pB Team: {m.player_b?.team_id || 'null'}
-          </div>
-        ))}
-        <div className="mt-4">Standings:</div>
-        {JSON.stringify(
-          Object.values(groupAStandings).map(t => ({ name: t.teamName, pts: t.tieBreakerScore, played: t.played, manualPts: t.manual_points })), 
-          null, 2
-        )}
-      </div>
 
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 shrink-0">
