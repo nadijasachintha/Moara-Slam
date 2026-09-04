@@ -313,10 +313,10 @@ export default function ResultsTab() {
       const pA = m.player_a;
       const pB = m.player_b;
       
-      if (!pA || !pB || !pA.team_id || !pB.team_id) return;
+      if (!pA || !pB || !pA.team?.id || !pB.team?.id) return;
       
-      const teamAId = pA.team_id;
-      const teamBId = pB.team_id;
+      const teamAId = pA.team.id;
+      const teamBId = pB.team.id;
       
       // Create a unique Encounter ID based on team IDs (sorted so A vs B is same as B vs A)
       const isAFirst = teamAId < teamBId;
