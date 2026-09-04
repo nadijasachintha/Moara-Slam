@@ -107,12 +107,12 @@ function RefereeControls({
               type="number"
               min="0"
               value={scoreA}
-              onChange={(e) => setScoreA(Math.max(0, parseInt(e.target.value) || 0))}
+              onChange={(e) => setScoreA(Math.min(25, Math.max(0, parseInt(e.target.value) || 0)))}
               className="w-12 h-7 bg-slate-950/80 border border-white/10 rounded-lg text-center text-xs font-black text-white focus:outline-none focus:border-[#22c55e]/50"
             />
             <button 
               type="button"
-              onClick={() => setScoreA(prev => prev + 1)}
+              onClick={() => setScoreA(prev => Math.min(25, prev + 1))}
               className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold transition-all"
             >
               +
@@ -135,12 +135,12 @@ function RefereeControls({
               type="number"
               min="0"
               value={scoreB}
-              onChange={(e) => setScoreB(Math.max(0, parseInt(e.target.value) || 0))}
+              onChange={(e) => setScoreB(Math.min(25, Math.max(0, parseInt(e.target.value) || 0)))}
               className="w-12 h-7 bg-slate-950/80 border border-white/10 rounded-lg text-center text-xs font-black text-white focus:outline-none focus:border-[#22c55e]/50"
             />
             <button 
               type="button"
-              onClick={() => setScoreB(prev => prev + 1)}
+              onClick={() => setScoreB(prev => Math.min(25, prev + 1))}
               className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-xs font-extrabold transition-all"
             >
               +
@@ -164,7 +164,12 @@ function RefereeControls({
             <span className="text-xs font-black text-white min-w-[14px] text-center">{frame}</span>
             <button 
               type="button"
-              onClick={() => setFrame(prev => Math.min(8, prev + 1))}
+              onClick={() => setFrame(prev => {
+                if (match.round === 'semi_finals' || match.round === 'finals') {
+                  return prev + 1;
+                }
+                return Math.min(8, prev + 1);
+              })}
               className="w-5 h-5 rounded bg-white/5 hover:bg-white/10 flex items-center justify-center text-white text-[10px] font-extrabold transition-all"
             >
               +
@@ -481,8 +486,8 @@ export default function LiveScoresTab() {
               Completed
             </span>
           </div>
-          <span className="text-[9px] font-bold text-slate-500 font-mono">
-            {match.total_duration_minutes}m limits
+          <span className="text-[9px] font-bold text-slate-500 font-mono text-center">
+            {match.total_duration_minutes}m limit / {match.round === 'semi_finals' || match.round === 'finals' ? '25 pts' : '8 frames / 25 pts'}
           </span>
         </div>
 
@@ -510,7 +515,7 @@ export default function LiveScoresTab() {
               {match.score_a} - {match.score_b}
             </span>
             <span className="text-[8px] text-slate-500 font-bold uppercase tracking-wider mt-1 leading-none">
-              {match.current_frame} frames
+              {(match.round === 'semi_finals' || match.round === 'finals') ? `${match.current_frame} frames` : `${match.current_frame} / 8 frames`}
             </span>
           </div>
 
@@ -607,7 +612,7 @@ export default function LiveScoresTab() {
               {match.score_a} - {match.score_b}
             </span>
             <span className="text-[9px] text-[#f5a623] font-bold uppercase tracking-wider mt-1.5 leading-none">
-              Frame {match.current_frame} / 8
+              Frame {match.current_frame}{(match.round === 'semi_finals' || match.round === 'finals') ? '' : ' / 8'}
             </span>
           </div>
 

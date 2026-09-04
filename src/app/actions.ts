@@ -448,8 +448,9 @@ export async function createManualMatch(payload: {
   // We assign a pseudo stage_index for the visual bracket (if applicable)
   // Let's say: Group Stages = 4, Semi-Finals = 2, Finals = 1
   let stageIndex = 4;
-  if (payload.round === 'finals') stageIndex = 1;
-  else if (payload.round === 'semi_finals') stageIndex = 2;
+  let duration = 45;
+  if (payload.round === 'finals') { stageIndex = 1; duration = 60; }
+  else if (payload.round === 'semi_finals') { stageIndex = 2; duration = 60; }
 
   const { error } = await adminClient.from('matches').insert({
     id: crypto.randomUUID(),

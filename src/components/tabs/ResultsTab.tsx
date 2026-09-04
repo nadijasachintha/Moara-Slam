@@ -461,6 +461,7 @@ export default function ResultsTab() {
       player_b: { full_name: sortedGroupB[1].teamName, team: { university: { name: sortedGroupB[1].uniName } } },
       score_a: 0,
       score_b: 0,
+      total_duration_minutes: 60,
       winner_id: null
     });
   }
@@ -478,6 +479,7 @@ export default function ResultsTab() {
       player_b: { full_name: sortedGroupA[1].teamName, team: { university: { name: sortedGroupA[1].uniName } } },
       score_a: 0,
       score_b: 0,
+      total_duration_minutes: 60,
       winner_id: null
     });
   }
@@ -495,6 +497,7 @@ export default function ResultsTab() {
       player_b: { full_name: 'Winner of Semi 2' },
       score_a: 0,
       score_b: 0,
+      total_duration_minutes: 60,
       winner_id: null
     });
   }
