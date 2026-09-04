@@ -38,10 +38,10 @@ export default function ResultsTab() {
     setStandingsForm(data.map(t => ({
       id: t.id,
       teamName: t.teamName,
-      played: t.played,
-      wins: t.wins,
-      points: t.tieBreakerScore,
-      rank: t.manual_rank
+      played: t.manual_played !== null && t.manual_played !== undefined ? t.manual_played : '',
+      wins: t.manual_wins !== null && t.manual_wins !== undefined ? t.manual_wins : '',
+      points: t.manual_points !== null && t.manual_points !== undefined ? t.manual_points : '',
+      rank: t.manual_rank !== null && t.manual_rank !== undefined ? t.manual_rank : ''
     })));
   };
 
