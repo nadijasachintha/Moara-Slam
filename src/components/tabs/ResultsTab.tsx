@@ -280,7 +280,7 @@ export default function ResultsTab() {
   const groupAStandings: Record<string, any> = {};
   const groupBStandings: Record<string, any> = {};
 
-  const encounters: Record<string, { teamAId: string, teamBId: string, teamAName: string, teamBName: string, teamAUni: string, teamBUni: string, teamAObj: any, teamBObj: any, matchWinsA: number, matchWinsB: number, totalScoreA: number, totalScoreB: number, matches: Match[], round: string, finishedMatches: number }> = {};
+  const encounters: Record<string, { teamAId: string, teamBId: string, teamAName: string, teamBName: string, teamAUni: string, teamBUni: string, teamAObj: any, teamBObj: any, matchWinsA: number, matchWinsB: number, singleWinsA: number, singleWinsB: number, totalScoreA: number, totalScoreB: number, matches: Match[], round: string, finishedMatches: number }> = {};
   
   // Filter matches by current gender tab
   const categoryMatches = matches.filter(m => m.category === activeCategory);
@@ -337,6 +337,8 @@ export default function ResultsTab() {
           teamBObj: isAFirst ? pB.team : pA.team,
           matchWinsA: 0,
           matchWinsB: 0,
+          singleWinsA: 0,
+          singleWinsB: 0,
           totalScoreA: 0,
           totalScoreB: 0,
           matches: [],
@@ -357,10 +359,13 @@ export default function ResultsTab() {
         enc.finishedMatches += 1;
         
         if (m.winner_id) {
-          if ((isAFirst && m.winner_id === pA.id) || (!isAFirst && m.winner_id === pB.id)) {
+          const isTeamAWinner = (isAFirst && m.winner_id === pA.id) || (!isAFirst && m.winner_id === pB.id);
+          if (isTeamAWinner) {
             enc.matchWinsA += 1;
+            if (m.match_type === 'single') enc.singleWinsA += 1;
           } else {
             enc.matchWinsB += 1;
+            if (m.match_type === 'single') enc.singleWinsB += 1;
           }
         }
       }
@@ -400,25 +405,29 @@ export default function ResultsTab() {
     
     target[enc.teamAId].tieBreakerScore += enc.totalScoreA;
     target[enc.teamBId].tieBreakerScore += enc.totalScoreB;
+    
+    // Track played and wins based on ENCOUNTER completions
+    const teamASweptSingles = enc.singleWinsA === 3;
+    const teamBSweptSingles = enc.singleWinsB === 3;
+    
+    // Has the encounter finished?
+    // Case 1: 5 matches are completed.
+    // Case 2: One team won all 3 singles.
+    const isEncounterFinished = enc.finishedMatches >= 5 || teamASweptSingles || teamBSweptSingles;
 
-    // Has the encounter finished? (A team reached 3 wins, or 5 matches completed)
-    if (enc.matchWinsA >= 3 || enc.matchWinsB >= 3 || enc.finishedMatches === 5) {
+    if (isEncounterFinished) {
       target[enc.teamAId].played += 1;
       target[enc.teamBId].played += 1;
       
-      // If a team won 3 matches and no doubles were played, give them 50 bonus points
-      const noDoublesPlayed = !enc.matches.some(m => m.match_type === 'double' && m.status === 'finished');
+      // Determine winner of the encounter
+      if (enc.matchWinsA > enc.matchWinsB) target[enc.teamAId].wins += 1;
+      else if (enc.matchWinsB > enc.matchWinsA) target[enc.teamBId].wins += 1;
       
-      if (enc.matchWinsA > enc.matchWinsB) {
-        target[enc.teamAId].wins += 1;
-        if (noDoublesPlayed && enc.matchWinsA >= 3) {
-          target[enc.teamAId].tieBreakerScore += 50;
-        }
-      } else if (enc.matchWinsB > enc.matchWinsA) {
-        target[enc.teamBId].wins += 1;
-        if (noDoublesPlayed && enc.matchWinsB >= 3) {
-          target[enc.teamBId].tieBreakerScore += 50;
-        }
+      // Special case: +50 score bonus for winning all 3 singles
+      if (teamASweptSingles) {
+        target[enc.teamAId].tieBreakerScore += 50;
+      } else if (teamBSweptSingles) {
+        target[enc.teamBId].tieBreakerScore += 50;
       }
     }
   });
