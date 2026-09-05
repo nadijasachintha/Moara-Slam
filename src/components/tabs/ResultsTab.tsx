@@ -77,7 +77,6 @@ export default function ResultsTab() {
   };
 
   // Champions State
-  const [showChampionsModal, setShowChampionsModal] = useState(false);
   const [champForm, setChampForm] = useState({ first: '', second: '', third: '' });
   const [savingChampions, setSavingChampions] = useState(false);
 
@@ -91,6 +90,14 @@ export default function ResultsTab() {
   const champ1st = uniqueTeams.find(t => t.tournament_rank === 1);
   const champ2nd = uniqueTeams.find(t => t.tournament_rank === 2);
   const champ3rd = uniqueTeams.find(t => t.tournament_rank === 3);
+
+  useEffect(() => {
+    setChampForm({
+      first: champ1st?.id || '',
+      second: champ2nd?.id || '',
+      third: champ3rd?.id || ''
+    });
+  }, [champ1st?.id, champ2nd?.id, champ3rd?.id, activeCategory]);
 
   const handleSaveChampions = async () => {
     setSavingChampions(true);
@@ -116,7 +123,6 @@ export default function ResultsTab() {
           team: { ...p.team, tournament_rank: newRank }
         };
       }));
-      setShowChampionsModal(false);
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -124,185 +130,95 @@ export default function ResultsTab() {
     }
   };
 
-  const renderChampionsPodium = () => {
-    const hasChampions = champ1st || champ2nd || champ3rd;
-    
+  const renderChampionsTable = () => {
     return (
-      <div className="glass-panel border border-white/5 rounded-3xl overflow-hidden mb-8 p-6 relative">
-        {/* Glow Effects */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-32 bg-amber-500/10 blur-[100px] pointer-events-none" />
-        
-        <div className="flex items-center justify-between mb-8 relative z-10">
-          <h2 className="text-xl font-black text-white uppercase tracking-wider flex items-center gap-3">
-            <Trophy className="w-6 h-6 text-amber-400" />
-            Tournament Champions
-          </h2>
+      <div className="glass-panel border border-white/5 rounded-3xl overflow-hidden mb-8">
+        <div className="bg-white/5 px-6 py-4 border-b border-white/5 flex items-center justify-between">
+          <h3 className="text-sm font-extrabold text-white flex items-center gap-2 tracking-wider">
+            <Trophy className="w-4 h-4 text-amber-500" /> Tournament Champions ({activeCategory})
+          </h3>
           {isAdmin && (
-            <button
-              onClick={() => {
-                setChampForm({
-                  first: champ1st?.id || '',
-                  second: champ2nd?.id || '',
-                  third: champ3rd?.id || ''
-                });
-                setShowChampionsModal(true);
-              }}
-              className="flex items-center gap-2 bg-white/5 hover:bg-white/10 text-white px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-colors border border-white/10"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              Edit Champions
-            </button>
-          )}
-        </div>
-
-        {!hasChampions ? (
-          <div className="text-center py-12 border-2 border-dashed border-white/5 rounded-2xl relative z-10">
-            <Trophy className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-            <h3 className="text-lg font-bold text-slate-400 uppercase tracking-widest mb-1">No Champions Crowned Yet</h3>
-            <p className="text-slate-500 text-sm">The tournament is still ongoing.</p>
-          </div>
-        ) : (
-          <div className="flex items-end justify-center gap-4 sm:gap-8 h-48 relative z-10 mt-12">
-            {/* 2nd Place */}
-            <div className="flex flex-col items-center animate-in slide-in-from-bottom-8 duration-500 delay-100 relative group w-1/3 max-w-[200px]">
-              <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-3 py-2 rounded-xl text-xs text-center border border-white/10 whitespace-nowrap z-20">
-                <div className="font-bold text-white">{champ2nd?.name || 'TBD'}</div>
-                <div className="text-slate-400">{champ2nd?.university?.name || ''}</div>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-slate-300 to-slate-400 shadow-[0_0_15px_rgba(203,213,225,0.3)] flex items-center justify-center mb-3 border-2 border-slate-200 z-10 relative">
-                <span className="text-xl font-black text-slate-700">2</span>
-              </div>
-              <div className="w-full bg-gradient-to-b from-slate-400/20 to-transparent border-t border-slate-400/30 rounded-t-xl h-24 flex items-center justify-center pt-2">
-                <span className="text-sm font-bold text-slate-300 uppercase truncate px-2 w-full text-center">
-                  {champ2nd?.name || 'TBD'}
-                </span>
-              </div>
-            </div>
-
-            {/* 1st Place */}
-            <div className="flex flex-col items-center animate-in slide-in-from-bottom-8 duration-700 relative group w-1/3 max-w-[200px]">
-              <div className="absolute -top-16 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-3 py-2 rounded-xl text-xs text-center border border-amber-500/30 whitespace-nowrap z-20 shadow-[0_0_20px_rgba(245,158,11,0.2)]">
-                <div className="font-bold text-white">{champ1st?.name || 'TBD'}</div>
-                <div className="text-slate-400">{champ1st?.university?.name || ''}</div>
-              </div>
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-300 to-amber-500 shadow-[0_0_25px_rgba(245,158,11,0.4)] flex items-center justify-center mb-3 border-2 border-amber-200 z-10 relative">
-                <Trophy className="w-8 h-8 text-amber-900" />
-              </div>
-              <div className="w-full bg-gradient-to-b from-amber-500/20 to-transparent border-t-2 border-amber-500/40 rounded-t-xl h-32 flex items-center justify-center pt-4">
-                <span className="text-base font-black text-amber-400 uppercase truncate px-2 w-full text-center">
-                  {champ1st?.name || 'TBD'}
-                </span>
-              </div>
-            </div>
-
-            {/* 3rd Place */}
-            <div className="flex flex-col items-center animate-in slide-in-from-bottom-8 duration-500 delay-200 relative group w-1/3 max-w-[200px]">
-              <div className="absolute -top-12 opacity-0 group-hover:opacity-100 transition-opacity bg-black/80 px-3 py-2 rounded-xl text-xs text-center border border-white/10 whitespace-nowrap z-20">
-                <div className="font-bold text-white">{champ3rd?.name || 'TBD'}</div>
-                <div className="text-slate-400">{champ3rd?.university?.name || ''}</div>
-              </div>
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 shadow-[0_0_15px_rgba(234,88,12,0.3)] flex items-center justify-center mb-3 border-2 border-orange-300 z-10 relative">
-                <span className="text-xl font-black text-orange-900">3</span>
-              </div>
-              <div className="w-full bg-gradient-to-b from-orange-500/20 to-transparent border-t border-orange-500/30 rounded-t-xl h-20 flex items-center justify-center pt-2">
-                <span className="text-sm font-bold text-orange-300 uppercase truncate px-2 w-full text-center">
-                  {champ3rd?.name || 'TBD'}
-                </span>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  const renderChampionsModal = () => {
-    if (!showChampionsModal) return null;
-    return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-        <div className="w-full max-w-md glass-panel rounded-3xl p-6 border border-amber-500/20 animate-in fade-in zoom-in duration-200">
-          <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-3">
-            <h3 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-500" />
-              Set Champions ({activeCategory})
-            </h3>
-            <button
-              onClick={() => setShowChampionsModal(false)}
-              className="text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-xl"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {/* 1st Place */}
-            <div className="p-4 bg-amber-500/5 border border-amber-500/20 rounded-2xl">
-              <label className="block text-xs font-black text-amber-400 uppercase mb-2 tracking-widest">
-                🥇 1st Place (Gold)
-              </label>
-              <select
-                value={champForm.first}
-                onChange={e => setChampForm(prev => ({ ...prev, first: e.target.value }))}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
-              >
-                <option value="">-- None --</option>
-                {uniqueTeams.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.university?.name})</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 2nd Place */}
-            <div className="p-4 bg-slate-400/5 border border-slate-400/20 rounded-2xl">
-              <label className="block text-xs font-black text-slate-300 uppercase mb-2 tracking-widest">
-                🥈 2nd Place (Silver)
-              </label>
-              <select
-                value={champForm.second}
-                onChange={e => setChampForm(prev => ({ ...prev, second: e.target.value }))}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-slate-400/50"
-              >
-                <option value="">-- None --</option>
-                {uniqueTeams.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.university?.name})</option>
-                ))}
-              </select>
-            </div>
-
-            {/* 3rd Place */}
-            <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-2xl">
-              <label className="block text-xs font-black text-orange-400 uppercase mb-2 tracking-widest">
-                🥉 3rd Place (Bronze)
-              </label>
-              <select
-                value={champForm.third}
-                onChange={e => setChampForm(prev => ({ ...prev, third: e.target.value }))}
-                className="w-full bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50"
-              >
-                <option value="">-- None --</option>
-                {uniqueTeams.map(t => (
-                  <option key={t.id} value={t.id}>{t.name} ({t.university?.name})</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="flex gap-3 mt-6">
-            <button
-              onClick={() => setShowChampionsModal(false)}
-              className="flex-1 px-4 py-3 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
-            >
-              Cancel
-            </button>
             <button
               onClick={handleSaveChampions}
               disabled={savingChampions}
-              className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-4 py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)] disabled:opacity-50"
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors disabled:opacity-50"
             >
-              {savingChampions ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              {savingChampions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Save Champions
             </button>
-          </div>
+          )}
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse min-w-[600px]">
+            <thead>
+              <tr className="bg-black/40 border-b border-white/5">
+                <th className="py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider w-40">Place</th>
+                <th className="py-3 px-6 text-xs font-bold text-slate-400 uppercase tracking-wider">Team</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/5 bg-black/20">
+              {/* 1st Place */}
+              <tr className="hover:bg-white/5 transition-colors group">
+                <td className="py-4 px-6 text-sm font-black text-amber-500 tracking-wider">
+                  🥇 1st Place
+                </td>
+                <td className="py-4 px-6">
+                  {isAdmin ? (
+                    <select
+                      value={champForm.first}
+                      onChange={e => setChampForm(prev => ({ ...prev, first: e.target.value }))}
+                      className="w-full max-w-md bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                    >
+                      <option value="" className="text-slate-500">-- Select Team --</option>
+                      {uniqueTeams.map(t => <option key={t.id} value={t.id} className="text-white bg-slate-900">{t.name} ({t.university?.name})</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-sm font-bold text-white">{champ1st?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ1st?.university?.name || ''}</span></span>
+                  )}
+                </td>
+              </tr>
+              {/* 2nd Place */}
+              <tr className="hover:bg-white/5 transition-colors group">
+                <td className="py-4 px-6 text-sm font-black text-slate-300 tracking-wider">
+                  🥈 2nd Place
+                </td>
+                <td className="py-4 px-6">
+                  {isAdmin ? (
+                    <select
+                      value={champForm.second}
+                      onChange={e => setChampForm(prev => ({ ...prev, second: e.target.value }))}
+                      className="w-full max-w-md bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-slate-400/50"
+                    >
+                      <option value="" className="text-slate-500">-- Select Team --</option>
+                      {uniqueTeams.map(t => <option key={t.id} value={t.id} className="text-white bg-slate-900">{t.name} ({t.university?.name})</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-sm font-bold text-white">{champ2nd?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ2nd?.university?.name || ''}</span></span>
+                  )}
+                </td>
+              </tr>
+              {/* 3rd Place */}
+              <tr className="hover:bg-white/5 transition-colors group">
+                <td className="py-4 px-6 text-sm font-black text-orange-400 tracking-wider">
+                  🥉 3rd Place
+                </td>
+                <td className="py-4 px-6">
+                  {isAdmin ? (
+                    <select
+                      value={champForm.third}
+                      onChange={e => setChampForm(prev => ({ ...prev, third: e.target.value }))}
+                      className="w-full max-w-md bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50"
+                    >
+                      <option value="" className="text-slate-500">-- Select Team --</option>
+                      {uniqueTeams.map(t => <option key={t.id} value={t.id} className="text-white bg-slate-900">{t.name} ({t.university?.name})</option>)}
+                    </select>
+                  ) : (
+                    <span className="text-sm font-bold text-white">{champ3rd?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ3rd?.university?.name || ''}</span></span>
+                  )}
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     );
@@ -1163,6 +1079,8 @@ export default function ResultsTab() {
     </div>
   );
 }
+
+
 
 
 
