@@ -299,6 +299,7 @@ export default function ResultsTab() {
           uniName: t.university?.name || 'Unknown',
           played: 0,
           wins: 0,
+          totalWinSets: 0,
           tieBreakerScore: 0,
           encounterMatches: [],
           manual_played: t.manual_played ?? null,
