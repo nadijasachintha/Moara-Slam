@@ -72,11 +72,11 @@ export default function ScheduleTab() {
   const [koTeamB, setKoTeamB] = useState('');
   const [koBoardStart, setKoBoardStart] = useState(1);
   const [koMatches, setKoMatches] = useState([
-    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
-    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
-    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
-    { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
-    { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
+    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: 1 },
+    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: 2 },
+    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: 3 },
+    { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '', table: 4 },
+    { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '', table: 5 },
   ]);
   const [creatingKnockout, setCreatingKnockout] = useState(false);
 
@@ -105,7 +105,16 @@ export default function ScheduleTab() {
       
       const liveTables = matches.filter(m => m.status === 'live').map(m => m.table_number);
       const availableTables = Array.from({length: 16}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
-      setKoBoardStart(availableTables.length > 0 ? availableTables[0] : 1);
+      const startT = availableTables.length > 0 ? availableTables[0] : 1;
+      setKoBoardStart(startT);
+      
+      setKoMatches([
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: startT },
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: startT + 1 },
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: startT + 2 },
+        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '', table: startT + 3 },
+        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '', table: startT + 4 },
+      ]);
     } catch (err: any) {
       alert('Error fetching players: ' + err.message);
     }
@@ -182,7 +191,7 @@ export default function ScheduleTab() {
         return;
       }
       
-      matchesToCreate.push({ ...m, tableNumber: koBoardStart + i });
+      matchesToCreate.push({ ...m });
     }
 
     if (matchesToCreate.length === 0) {
@@ -200,7 +209,7 @@ export default function ScheduleTab() {
         playerA2Id: m.type === 'double' ? m.pA2 : null,
         playerBId: m.pB1,
         playerB2Id: m.type === 'double' ? m.pB2 : null,
-        tableNumber: m.tableNumber,
+        tableNumber: m.table,
         scheduledTime: new Date().toISOString()
       }));
       
@@ -209,11 +218,11 @@ export default function ScheduleTab() {
       // Reset state
       setKoTeamA(''); setKoTeamB(''); setKoUniA(''); setKoUniB('');
       setKoMatches([
-        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
-        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
-        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
-        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
-        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: 1 },
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: 2 },
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '', table: 3 },
+        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '', table: 4 },
+        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '', table: 5 },
       ]);
     } catch (err: any) {
       alert(err.message || 'Error creating knockout encounter');
@@ -814,9 +823,29 @@ export default function ScheduleTab() {
                       {koMatches.map((m, idx) => (
                         <div key={idx} className="flex flex-col gap-2 p-3 bg-black/30 border border-white/5 rounded-xl">
                           <div className="flex items-center justify-between border-b border-white/5 pb-2">
-                            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-md text-white">
-                              Board {koBoardStart + idx}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-bold uppercase tracking-wider bg-white/10 px-2 py-1 rounded-md text-slate-300">
+                                Match {idx + 1}
+                              </span>
+                              <select
+                                value={m.table}
+                                onChange={(e) => {
+                                  const newM = [...koMatches];
+                                  newM[idx].table = parseInt(e.target.value);
+                                  setKoMatches(newM);
+                                }}
+                                className="bg-black/60 border border-white/10 rounded-md px-2 py-0.5 text-[10px] font-bold text-white focus:outline-none"
+                              >
+                                {Array.from({length: 16}, (_, i) => i + 1).map(t => {
+                                  const isLive = matches.some(mt => mt.status === 'live' && mt.table_number === t);
+                                  return (
+                                    <option key={t} value={t} disabled={isLive} className="bg-[#0a160c] text-white">
+                                      Board {t} {isLive ? '(In Use)' : ''}
+                                    </option>
+                                  );
+                                })}
+                              </select>
+                            </div>
                             <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
                               {m.type === 'single' ? 'Single Match' : 'Double Match'}
                             </span>
