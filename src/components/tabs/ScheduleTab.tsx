@@ -11,7 +11,9 @@ import {
   Loader2, 
   Play,
   Settings,
-  X
+  X,
+  Plus,
+  Trophy
 } from 'lucide-react';
 
 export default function ScheduleTab() {
@@ -60,6 +62,24 @@ export default function ScheduleTab() {
   
   const [newMatchTable, setNewMatchTable] = useState(1);
 
+  // Knockout Encounter State
+  const [showKnockoutModal, setShowKnockoutModal] = useState(false);
+  const [koCategory, setKoCategory] = useState<'boys' | 'girls'>('boys');
+  const [koRound, setKoRound] = useState('semi_finals');
+  const [koUniA, setKoUniA] = useState('');
+  const [koUniB, setKoUniB] = useState('');
+  const [koTeamA, setKoTeamA] = useState('');
+  const [koTeamB, setKoTeamB] = useState('');
+  const [koBoardStart, setKoBoardStart] = useState(1);
+  const [koMatches, setKoMatches] = useState([
+    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
+    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
+    { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
+    { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
+    { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
+  ]);
+  const [creatingKnockout, setCreatingKnockout] = useState(false);
+
   // Load players when opening create modal
   const handleOpenCreateModal = async () => {
     try {
@@ -72,6 +92,20 @@ export default function ScheduleTab() {
       const availableTables = Array.from({length: 16}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
       setNewMatchTable(availableTables.length > 0 ? availableTables[0] : 1);
       
+    } catch (err: any) {
+      alert('Error fetching players: ' + err.message);
+    }
+  };
+
+  const handleOpenKnockoutModal = async () => {
+    try {
+      const p = await getPlayers();
+      setPlayersList(p);
+      setShowKnockoutModal(true);
+      
+      const liveTables = matches.filter(m => m.status === 'live').map(m => m.table_number);
+      const availableTables = Array.from({length: 16}, (_, i) => i + 1).filter(t => !liveTables.includes(t));
+      setKoBoardStart(availableTables.length > 0 ? availableTables[0] : 1);
     } catch (err: any) {
       alert('Error fetching players: ' + err.message);
     }
@@ -115,6 +149,61 @@ export default function ScheduleTab() {
       alert(err.message || 'Error creating match');
     } finally {
       setCreatingMatch(false);
+    }
+  };
+
+  const handleCreateKnockoutEncounter = async () => {
+    if (!koTeamA || !koTeamB) {
+      alert('Please select both Team A and Team B');
+      return;
+    }
+    
+    // Validate all 5 matches are fully filled
+    for (let i = 0; i < 5; i++) {
+      const m = koMatches[i];
+      if (!m.pA1 || !m.pB1) {
+        alert(`Please select Player 1 for both teams in Match ${i + 1}`);
+        return;
+      }
+      if (m.type === 'double' && (!m.pA2 || !m.pB2)) {
+        alert(`Please select Player 2 for both teams in Match ${i + 1} (Double)`);
+        return;
+      }
+      if (m.pA1 === m.pA2 || m.pB1 === m.pB2) {
+        alert(`A player cannot be selected twice in the same team for Match ${i + 1}`);
+        return;
+      }
+    }
+
+    setCreatingKnockout(true);
+    try {
+      const promises = koMatches.map((m, i) => createMatch({
+        round: koRound,
+        category: koCategory,
+        matchType: m.type as 'single' | 'double',
+        playerAId: m.pA1,
+        playerA2Id: m.type === 'double' ? m.pA2 : null,
+        playerBId: m.pB1,
+        playerB2Id: m.type === 'double' ? m.pB2 : null,
+        tableNumber: koBoardStart + i,
+        scheduledTime: new Date().toISOString()
+      }));
+      
+      await Promise.all(promises);
+      setShowKnockoutModal(false);
+      // Reset state
+      setKoTeamA(''); setKoTeamB(''); setKoUniA(''); setKoUniB('');
+      setKoMatches([
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
+        { type: 'single', pA1: '', pA2: '', pB1: '', pB2: '' },
+        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
+        { type: 'double', pA1: '', pA2: '', pB1: '', pB2: '' },
+      ]);
+    } catch (err: any) {
+      alert(err.message || 'Error creating knockout encounter');
+    } finally {
+      setCreatingKnockout(false);
     }
   };
 
@@ -373,16 +462,22 @@ export default function ScheduleTab() {
         </div>
       </div>
 
-      {isAdmin && (
-        <div className="flex justify-end">
-          <button
-            onClick={handleOpenCreateModal}
-            className="bg-gradient-to-r from-[#22c55e] to-[#16a34a] hover:from-[#22c55e]/90 hover:to-[#16a34a]/90 text-slate-950 font-extrabold text-xs px-4 py-2 rounded-xl transition-all shadow-[0_0_15px_rgba(0,242,254,0.15)] flex items-center gap-1.5"
-          >
-            <Calendar className="w-4 h-4" /> Create Match Manually
-          </button>
-        </div>
-      )}
+        {isAdmin && (
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={handleOpenKnockoutModal}
+              className="bg-amber-500 hover:bg-amber-600 text-slate-950 font-black px-6 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all shadow-lg shadow-amber-500/20"
+            >
+              <Trophy className="w-4 h-4" /> Schedule Knockout
+            </button>
+            <button
+              onClick={handleOpenCreateModal}
+              className="bg-[#22c55e] hover:bg-[#16a34a] text-slate-950 font-black px-6 py-2.5 rounded-xl text-sm flex items-center gap-2 transition-all shadow-lg shadow-[#22c55e]/20"
+            >
+              <Plus className="w-4 h-4" /> Create Manual Match
+            </button>
+          </div>
+        )}
       {viewMode === 'list' && matches.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {matches.map(renderScoreCard)}
@@ -600,6 +695,219 @@ export default function ScheduleTab() {
           </div>
         </div>
       )}
+
+            {showKnockoutModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-4xl glass-panel rounded-3xl p-6 border border-white/10 animate-in fade-in zoom-in duration-200">
+            <div className="flex items-center justify-between mb-6 border-b border-white/5 pb-3">
+              <h3 className="text-lg font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <Trophy className="w-5 h-5 text-amber-500" />
+                Schedule Knockout Encounter
+              </h3>
+              <button
+                onClick={() => setShowKnockoutModal(false)}
+                className="text-slate-400 hover:text-white transition-colors bg-white/5 hover:bg-white/10 p-2 rounded-xl"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            {(() => {
+              const activePlayerIds = new Set<string>();
+              matches.forEach(m => {
+                if (m.status === 'scheduled' || m.status === 'live') {
+                  if (m.player_a_id) activePlayerIds.add(m.player_a_id);
+                  if (m.player_a2_id) activePlayerIds.add(m.player_a2_id);
+                  if (m.player_b_id) activePlayerIds.add(m.player_b_id);
+                  if (m.player_b2_id) activePlayerIds.add(m.player_b2_id);
+                }
+              });
+
+              const categoryPlayers = playersList.filter(p => p.team && p.team.category === koCategory);
+              const availableTeams = Array.from(new Set(categoryPlayers.map(p => p.team?.name))).filter(Boolean) as string[];
+
+              return (
+                <div className="space-y-6 max-h-[75vh] overflow-y-auto pr-2 custom-scrollbar">
+                  
+                  {/* Category & Round */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Category</label>
+                      <div className="flex bg-black/50 p-1 rounded-xl border border-white/5">
+                        <button
+                          onClick={() => { setKoCategory('boys'); setKoTeamA(''); setKoTeamB(''); }}
+                          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors ${koCategory === 'boys' ? 'bg-[#22c55e] text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Boys
+                        </button>
+                        <button
+                          onClick={() => { setKoCategory('girls'); setKoTeamA(''); setKoTeamB(''); }}
+                          className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-lg transition-colors ${koCategory === 'girls' ? 'bg-[#22c55e] text-slate-950 shadow-md' : 'text-slate-400 hover:text-white'}`}
+                        >
+                          Girls
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1.5 tracking-wider">Knockout Round</label>
+                      <select
+                        value={koRound}
+                        onChange={(e) => setKoRound(e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
+                      >
+                        <option value="semi_finals" className="bg-[#0a160c] text-white">Semi Finals</option>
+                        <option value="finals" className="bg-[#0a160c] text-white">Finals</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Teams */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+                      <h4 className="text-xs font-bold text-[#22c55e] uppercase tracking-widest">Team A</h4>
+                      <select
+                        value={koTeamA}
+                        onChange={(e) => setKoTeamA(e.target.value)}
+                        className="w-full bg-black/40 border border-[#22c55e]/30 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none"
+                      >
+                        <option value="" className="bg-[#0a160c] text-white">Select Team A</option>
+                        {availableTeams.filter(t => t !== koTeamB).map(t => (
+                          <option key={t} value={t} className="bg-[#0a160c] text-white">{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="p-4 bg-white/5 border border-white/10 rounded-2xl space-y-3">
+                      <h4 className="text-xs font-bold text-amber-400 uppercase tracking-widest">Team B</h4>
+                      <select
+                        value={koTeamB}
+                        onChange={(e) => setKoTeamB(e.target.value)}
+                        className="w-full bg-black/40 border border-amber-400/30 rounded-xl px-3 py-2 text-sm font-bold text-white focus:outline-none"
+                      >
+                        <option value="" className="bg-[#0a160c] text-white">Select Team B</option>
+                        {availableTeams.filter(t => t !== koTeamA).map(t => (
+                          <option key={t} value={t} className="bg-[#0a160c] text-white">{t}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Matches List */}
+                  {koTeamA && koTeamB && (
+                    <div className="space-y-3 pt-4 border-t border-white/5">
+                      <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">Board Assignments</h4>
+                      
+                      {koMatches.map((m, idx) => (
+                        <div key={idx} className="flex flex-col gap-2 p-3 bg-black/30 border border-white/5 rounded-xl">
+                          <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-md text-white">
+                              Board {koBoardStart + idx}
+                            </span>
+                            <span className="text-[9px] font-extrabold uppercase tracking-widest text-slate-400">
+                              {m.type === 'single' ? 'Single Match' : 'Double Match'}
+                            </span>
+                          </div>
+                          <div className="grid grid-cols-2 gap-4">
+                            {/* Player A Selection */}
+                            <div className="space-y-2">
+                              <select
+                                value={m.pA1}
+                                onChange={(e) => {
+                                  const newM = [...koMatches];
+                                  newM[idx].pA1 = e.target.value;
+                                  setKoMatches(newM);
+                                }}
+                                className="w-full bg-black/40 border border-[#22c55e]/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              >
+                                <option value="" className="bg-[#0a160c] text-slate-500">Player 1</option>
+                                {categoryPlayers.filter(p => p.team?.name === koTeamA && !activePlayerIds.has(p.id) && p.id !== m.pA2).map(p => (
+                                  <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
+                                ))}
+                              </select>
+                              {m.type === 'double' && (
+                                <select
+                                  value={m.pA2}
+                                  onChange={(e) => {
+                                    const newM = [...koMatches];
+                                    newM[idx].pA2 = e.target.value;
+                                    setKoMatches(newM);
+                                  }}
+                                  className="w-full bg-black/40 border border-[#22c55e]/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                                >
+                                  <option value="" className="bg-[#0a160c] text-slate-500">Player 2</option>
+                                  {categoryPlayers.filter(p => p.team?.name === koTeamA && !activePlayerIds.has(p.id) && p.id !== m.pA1).map(p => (
+                                    <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            
+                            {/* Player B Selection */}
+                            <div className="space-y-2">
+                              <select
+                                value={m.pB1}
+                                onChange={(e) => {
+                                  const newM = [...koMatches];
+                                  newM[idx].pB1 = e.target.value;
+                                  setKoMatches(newM);
+                                }}
+                                className="w-full bg-black/40 border border-amber-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                              >
+                                <option value="" className="bg-[#0a160c] text-slate-500">Player 1</option>
+                                {categoryPlayers.filter(p => p.team?.name === koTeamB && !activePlayerIds.has(p.id) && p.id !== m.pB2).map(p => (
+                                  <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
+                                ))}
+                              </select>
+                              {m.type === 'double' && (
+                                <select
+                                  value={m.pB2}
+                                  onChange={(e) => {
+                                    const newM = [...koMatches];
+                                    newM[idx].pB2 = e.target.value;
+                                    setKoMatches(newM);
+                                  }}
+                                  className="w-full bg-black/40 border border-amber-400/30 rounded-lg px-2 py-1.5 text-xs text-white focus:outline-none"
+                                >
+                                  <option value="" className="bg-[#0a160c] text-slate-500">Player 2</option>
+                                  {categoryPlayers.filter(p => p.team?.name === koTeamB && !activePlayerIds.has(p.id) && p.id !== m.pB1).map(p => (
+                                    <option key={p.id} value={p.id} className="bg-[#0a160c] text-white">{p.full_name}</option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-4 border-t border-white/5">
+                    <button
+                      onClick={() => setShowKnockoutModal(false)}
+                      className="flex-1 px-6 py-3 rounded-xl font-bold text-sm text-slate-300 hover:bg-white/5 hover:text-white transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleCreateKnockoutEncounter}
+                      disabled={creatingKnockout || !koTeamA || !koTeamB}
+                      className="flex-1 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black px-6 py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_rgba(245,158,11,0.2)] disabled:opacity-50"
+                    >
+                      {creatingKnockout ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Trophy className="w-5 h-5" />
+                      )}
+                      Schedule 5 Matches
+                    </button>
+                  </div>
+
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )}
+
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
@@ -829,4 +1137,5 @@ export default function ScheduleTab() {
     </div>
   );
 }
+
 

@@ -526,9 +526,70 @@ export default function ResultsTab() {
 
   // Find any manually scheduled semi/finals for this category
   const manualBracketMatches = categoryMatches.filter(m => m.round === 'semi_finals' || m.round === 'finals');
+  const groupedKnockoutEncounters: any[] = [];
+  
+  if (manualBracketMatches.length > 0) {
+    const encMap = new Map<string, any>();
+    
+    manualBracketMatches.forEach(m => {
+      // Safely check if players and teams exist before comparing
+      const teamAId = (m.player_a?.team as any)?.id || 'unknownA';
+      const teamBId = (m.player_b?.team as any)?.id || 'unknownB';
+      
+      const isAFirst = teamAId < teamBId;
+      const pA = isAFirst ? m.player_a : m.player_b;
+      const pB = isAFirst ? m.player_b : m.player_a;
+      
+      const pATeamId = isAFirst ? teamAId : teamBId;
+      const pBTeamId = isAFirst ? teamBId : teamAId;
+      
+      if (pATeamId === 'unknownA' && pBTeamId === 'unknownB') return; // Skip if no teams
+      
+      const encKey = `${m.round}_${pATeamId}_${pBTeamId}`;
+      if (!encMap.has(encKey)) {
+        encMap.set(encKey, {
+          id: encKey,
+          round: m.round,
+          stage_index: m.round === 'finals' ? 1 : 2,
+          teamAId: pATeamId,
+          teamBId: pBTeamId,
+          teamAName: pA ? (pA.team as any)?.name : 'TBD',
+          teamBName: pB ? (pB.team as any)?.name : 'TBD',
+          teamAUni: pA ? (pA.team as any)?.university?.name : '',
+          teamBUni: pB ? (pB.team as any)?.university?.name : '',
+          winsA: 0,
+          winsB: 0,
+          totalFinished: 0
+        });
+      }
+      
+      const enc = encMap.get(encKey)!;
+      if (m.status === 'finished') {
+        enc.totalFinished += 1;
+        if (m.winner_id === (isAFirst ? m.player_a_id : m.player_b_id)) enc.winsA += 1;
+        else enc.winsB += 1;
+      }
+    });
+    
+    encMap.forEach(enc => {
+      groupedKnockoutEncounters.push({
+        id: enc.id,
+        round: enc.round,
+        stage_index: enc.stage_index,
+        status: enc.winsA >= 3 || enc.winsB >= 3 || enc.totalFinished >= 5 ? 'finished' : 'pending',
+        player_a_id: enc.teamAId,
+        player_b_id: enc.teamBId,
+        player_a: { full_name: enc.teamAName, team: { university: { name: enc.teamAUni } } },
+        player_b: { full_name: enc.teamBName, team: { university: { name: enc.teamBUni } } },
+        score_a: enc.winsA,
+        score_b: enc.winsB,
+        winner_id: enc.winsA >= 3 ? enc.teamAId : (enc.winsB >= 3 ? enc.teamBId : null)
+      });
+    });
+  }
   
   // Prefer manual bracket if it has items, otherwise use auto bracket
-  const displayBracketMatches = manualBracketMatches.length > 0 ? manualBracketMatches : autoBracketMatches;
+  const displayBracketMatches = manualBracketMatches.length > 0 ? groupedKnockoutEncounters : autoBracketMatches;
 
   const renderStandingsTable = (title: string, data: any[], groupKey: string) => (
     <div className="glass-panel border border-white/5 rounded-3xl overflow-hidden mb-6">
