@@ -382,7 +382,7 @@ export default function ResultsTab() {
     if (!target[enc.teamAId]) {
       target[enc.teamAId] = { 
         id: enc.teamAId, teamName: enc.teamAName, uniName: enc.teamAUni, 
-        played: 0, wins: 0, tieBreakerScore: 0, encounterMatches: [],
+        played: 0, wins: 0, totalWinSets: 0, tieBreakerScore: 0, encounterMatches: [],
         manual_played: enc.teamAObj?.manual_played ?? null,
         manual_wins: enc.teamAObj?.manual_wins ?? null,
         manual_points: enc.teamAObj?.manual_points ?? null,
@@ -393,7 +393,7 @@ export default function ResultsTab() {
     if (!target[enc.teamBId]) {
       target[enc.teamBId] = { 
         id: enc.teamBId, teamName: enc.teamBName, uniName: enc.teamBUni, 
-        played: 0, wins: 0, tieBreakerScore: 0, encounterMatches: [],
+        played: 0, wins: 0, totalWinSets: 0, tieBreakerScore: 0, encounterMatches: [],
         manual_played: enc.teamBObj?.manual_played ?? null,
         manual_wins: enc.teamBObj?.manual_wins ?? null,
         manual_points: enc.teamBObj?.manual_points ?? null,
@@ -407,6 +407,10 @@ export default function ResultsTab() {
     
     target[enc.teamAId].tieBreakerScore += enc.totalScoreA;
     target[enc.teamBId].tieBreakerScore += enc.totalScoreB;
+    
+    // Accumulate all board wins as "Total Win Sets"
+    target[enc.teamAId].totalWinSets += enc.matchWinsA;
+    target[enc.teamBId].totalWinSets += enc.matchWinsB;
     
     // Track played and wins based on ENCOUNTER completions
     const teamASweptSingles = enc.singleWinsA === 3;
@@ -451,7 +455,10 @@ export default function ResultsTab() {
     if (a.manual_rank !== null && a.manual_rank !== undefined && b.manual_rank !== null && b.manual_rank !== undefined) return a.manual_rank - b.manual_rank;
     if (a.manual_rank !== null && a.manual_rank !== undefined) return -1;
     if (b.manual_rank !== null && b.manual_rank !== undefined) return 1;
-    return b.wins !== a.wins ? b.wins - a.wins : b.tieBreakerScore - a.tieBreakerScore;
+    
+    if (b.wins !== a.wins) return b.wins - a.wins; // 1st priority: Encounter Wins
+    if (b.totalWinSets !== a.totalWinSets) return b.totalWinSets - a.totalWinSets; // 2nd priority: Board Win Sets
+    return b.tieBreakerScore - a.tieBreakerScore; // 3rd priority: Total Score Points
   };
 
   const sortedGroupA = Object.values(groupAStandings).sort(sortTeams);
@@ -543,13 +550,14 @@ export default function ResultsTab() {
               <th className="px-6 py-3 border-b border-white/5">Team / University</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Total Matches</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Wins</th>
+              <th className="px-6 py-3 border-b border-white/5 text-center">Total Win Sets</th>
               <th className="px-6 py-3 border-b border-white/5 text-center">Total Score</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-white/5">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-slate-500 font-bold">No teams registered for this group yet.</td>
+                <td colSpan={6} className="px-6 py-8 text-center text-slate-500 font-bold">No teams registered for this group yet.</td>
               </tr>
             ) : (
               data.map((team, idx) => {
@@ -584,12 +592,13 @@ export default function ResultsTab() {
                     </td>
                     <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.played}</td>
                     <td className="px-6 py-4 text-center text-lg font-black text-[#22c55e]">{team.wins}</td>
+                    <td className="px-6 py-4 text-center text-amber-400 font-black">{team.totalWinSets}</td>
                     <td className="px-6 py-4 text-center text-slate-300 font-bold">{team.tieBreakerScore} pts</td>
                   </tr>
                   
                   {expandedTeamId === `${groupKey}_${team.id}` && (
                     <tr>
-                      <td colSpan={5} className="p-0 bg-black/20">
+                      <td colSpan={6} className="p-0 bg-black/20">
                         <div className="p-4 bg-gradient-to-b from-black/40 to-transparent">
                           <h4 className="text-[10px] font-bold uppercase tracking-widest text-[#22c55e] mb-3 px-2">Encounters for {team.teamName}</h4>
                           
