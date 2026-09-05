@@ -14,13 +14,16 @@ import {
   X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getAllTeams } from '@/app/actions';
 
 export default function ResultsTab() {
   const { matches, isAdmin, updateStandingsOverride, getPlayers, updateChampions } = useTournament();
   const [playersList, setPlayersList] = useState<any[]>([]);
+  const [allTeamsList, setAllTeamsList] = useState<any[]>([]);
 
   useEffect(() => {
     getPlayers().then(setPlayersList);
+    getAllTeams().then(setAllTeamsList);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
@@ -81,10 +84,7 @@ export default function ResultsTab() {
   const [savingChampions, setSavingChampions] = useState(false);
 
   // Extract unique teams for the active category
-  const categoryPlayers = playersList.filter(p => p.team && p.team.category === activeCategory);
-  const uniqueTeams = Array.from(
-    new Map(categoryPlayers.map(p => [p.team.id, p.team])).values()
-  );
+  const uniqueTeams = allTeamsList.filter(t => t.category === activeCategory);
 
   // Get current champions
   const champ1st = uniqueTeams.find(t => t.tournament_rank === 1);
@@ -109,6 +109,16 @@ export default function ResultsTab() {
         champForm.third || null
       );
       // Local state update (optimistic)
+      setAllTeamsList(prev => prev.map(t => {
+        if (t.category !== activeCategory) return t;
+        
+        let newRank = null;
+        if (t.id === champForm.first) newRank = 1;
+        if (t.id === champForm.second) newRank = 2;
+        if (t.id === champForm.third) newRank = 3;
+        
+        return { ...t, tournament_rank: newRank };
+      }));
       setPlayersList(prev => prev.map(p => {
         if (!p.team) return p;
         if (p.team.category !== activeCategory) return p;

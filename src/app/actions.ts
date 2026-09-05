@@ -1,5 +1,15 @@
 'use server';
 
+export async function getAllTeams() {
+  const adminClient = getSupabaseAdmin();
+  const { data, error } = await adminClient
+    .from('teams')
+    .select('*, university:universities(name)')
+    .order('name', { ascending: true });
+  if (error) throw new Error(error.message);
+  return data || [];
+}
+
 import { supabase, getSupabaseAdmin } from '@/lib/supabase';
 import { Match, Player, Registration, Team, TournamentSettings, University } from '@/types/database.types';
 import { Resend } from 'resend';
@@ -775,3 +785,5 @@ export async function updateTournamentChampions(payload: {
   await logAdminAction(payload.adminEmail, 'UPDATE_CHAMPIONS', payload);
   return { success: true };
 }
+
+
