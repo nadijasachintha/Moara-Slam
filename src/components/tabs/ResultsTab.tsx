@@ -433,8 +433,10 @@ export default function ResultsTab() {
       // Special case: +50 score bonus for winning all 3 singles
       if (teamASweptSingles) {
         target[enc.teamAId].tieBreakerScore += 50;
+        target[enc.teamAId].totalWinSets += (5 - enc.matchWinsA); // Award remaining unplayed sets
       } else if (teamBSweptSingles) {
         target[enc.teamBId].tieBreakerScore += 50;
+        target[enc.teamBId].totalWinSets += (5 - enc.matchWinsB); // Award remaining unplayed sets
       }
     }
   });
