@@ -780,6 +780,7 @@ export default function ScheduleTab() {
                         className="w-full bg-white/5 border border-white/10 focus:border-[#22c55e] rounded-xl px-4 py-3 text-sm text-white focus:outline-none transition-all appearance-none"
                       >
                         <option value="semi_finals" className="bg-[#0a160c] text-white">Semi Finals</option>
+                        <option value="3rd_place" className="bg-[#0a160c] text-white">3rd Place Match</option>
                         <option value="finals" className="bg-[#0a160c] text-white">Finals</option>
                       </select>
                     </div>

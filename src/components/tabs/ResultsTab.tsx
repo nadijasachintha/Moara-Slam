@@ -758,7 +758,7 @@ export default function ResultsTab() {
   }
 
   // Find any manually scheduled semi/finals for this category
-  const manualBracketMatches = categoryMatches.filter(m => m.round === 'semi_finals' || m.round === 'finals');
+  const manualBracketMatches = categoryMatches.filter(m => m.round === 'semi_finals' || m.round === 'finals' || m.round === '3rd_place');
   const groupedKnockoutEncounters: any[] = [];
   
   if (manualBracketMatches.length > 0) {
@@ -783,7 +783,7 @@ export default function ResultsTab() {
         encMap.set(encKey, {
           id: encKey,
           round: m.round,
-          stage_index: m.round === 'finals' ? 1 : 2,
+          stage_index: m.round === 'finals' || m.round === '3rd_place' ? 1 : 2,
           teamAId: pATeamId,
           teamBId: pBTeamId,
           teamAName: pA ? (pA.team as any)?.name : 'TBD',
