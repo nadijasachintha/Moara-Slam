@@ -21,7 +21,8 @@ import {
   getPendingRegistrations,
   getUniversities,
   cancelMatch,
-  updateTeamStandings
+  updateTeamStandings,
+  updateTournamentChampions
 } from '@/app/actions';
 import { supabase } from '@/lib/supabase';
 
@@ -55,6 +56,7 @@ interface TournamentContextType {
   updateSettings: (start: string, tables: number, duration: number, breakMins: number) => Promise<void>;
   cancelM: (matchId: string) => Promise<void>;
   updateStandingsOverride: (teamId: string, played: number | null, wins: number | null, points: number | null, rank: number | null) => Promise<void>;
+  updateChampions: (category: 'boys' | 'girls', firstId: string | null, secondId: string | null, thirdId: string | null) => Promise<void>;
 }
 
 const TournamentContext = createContext<TournamentContextType | undefined>(undefined);
@@ -813,9 +815,15 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
     }
     
     // Demo Mode Override
-    // Note: teams are not exposed directly in the context state, they are embedded in registrations or matches.
-    // In demo mode, this won't persist locally to a separate team state easily without a reload, but we'll log it.
     addDemoAudit('UPDATE_STANDINGS', { teamId, played, wins, points, rank });
+  };
+
+  const updateChampions = async (category: 'boys' | 'girls', firstId: string | null, secondId: string | null, thirdId: string | null) => {
+    if (!isDemoMode) {
+      await updateTournamentChampions({ category, firstPlaceId: firstId, secondPlaceId: secondId, thirdPlaceId: thirdId, adminEmail });
+      return;
+    }
+    addDemoAudit('UPDATE_CHAMPIONS', { category, firstId, secondId, thirdId });
   };
 
   return (
@@ -849,7 +857,8 @@ export function TournamentProvider({ children }: { children: React.ReactNode }) 
         overrideSlot,
         updateSettings,
         cancelM,
-        updateStandingsOverride
+        updateStandingsOverride,
+        updateChampions
       }}
     >
       {children}

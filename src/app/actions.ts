@@ -754,3 +754,24 @@ export async function updateTeamStandings(payload: {
   return { success: true };
 }
 
+
+export async function updateTournamentChampions(payload: {
+  category: 'boys' | 'girls';
+  firstPlaceId: string | null;
+  secondPlaceId: string | null;
+  thirdPlaceId: string | null;
+  adminEmail: string;
+}) {
+  const adminClient = getSupabaseAdmin();
+  
+  // Reset all existing ranks for this category to null
+  await adminClient.from('teams').update({ tournament_rank: null }).eq('category', payload.category);
+  
+  // Set new ranks if provided
+  if (payload.firstPlaceId) await adminClient.from('teams').update({ tournament_rank: 1 }).eq('id', payload.firstPlaceId);
+  if (payload.secondPlaceId) await adminClient.from('teams').update({ tournament_rank: 2 }).eq('id', payload.secondPlaceId);
+  if (payload.thirdPlaceId) await adminClient.from('teams').update({ tournament_rank: 3 }).eq('id', payload.thirdPlaceId);
+
+  await logAdminAction(payload.adminEmail, 'UPDATE_CHAMPIONS', payload);
+  return { success: true };
+}
