@@ -925,6 +925,8 @@ export default function ResultsTab() {
         </div>
       </div>
 
+      {renderChampionsTable()}
+
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 shrink-0">
           <button
