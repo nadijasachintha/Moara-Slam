@@ -158,26 +158,41 @@ export default function ScheduleTab() {
       return;
     }
     
-    // Validate all 5 matches are fully filled
+    const matchesToCreate = [];
+    
+    // Validate matches and skip empty ones
     for (let i = 0; i < 5; i++) {
       const m = koMatches[i];
+      
+      // Check if row is completely empty
+      const isCompletelyEmpty = !m.pA1 && !m.pB1 && !m.pA2 && !m.pB2;
+      if (isCompletelyEmpty) continue;
+      
+      // If partially filled, throw error
       if (!m.pA1 || !m.pB1) {
-        alert(`Please select Player 1 for both teams in Match ${i + 1}`);
+        alert(`Please select Player 1 for both teams in Match ${i + 1}, or leave it completely empty.`);
         return;
       }
       if (m.type === 'double' && (!m.pA2 || !m.pB2)) {
-        alert(`Please select Player 2 for both teams in Match ${i + 1} (Double)`);
+        alert(`Please select Player 2 for both teams in Match ${i + 1} (Double), or leave it completely empty.`);
         return;
       }
       if (m.pA1 === m.pA2 || m.pB1 === m.pB2) {
         alert(`A player cannot be selected twice in the same team for Match ${i + 1}`);
         return;
       }
+      
+      matchesToCreate.push({ ...m, tableNumber: koBoardStart + i });
+    }
+
+    if (matchesToCreate.length === 0) {
+      alert('Please schedule at least one match.');
+      return;
     }
 
     setCreatingKnockout(true);
     try {
-      const promises = koMatches.map((m, i) => createMatch({
+      const promises = matchesToCreate.map((m) => createMatch({
         round: koRound,
         category: koCategory,
         matchType: m.type as 'single' | 'double',
@@ -185,7 +200,7 @@ export default function ScheduleTab() {
         playerA2Id: m.type === 'double' ? m.pA2 : null,
         playerBId: m.pB1,
         playerB2Id: m.type === 'double' ? m.pB2 : null,
-        tableNumber: koBoardStart + i,
+        tableNumber: m.tableNumber,
         scheduledTime: new Date().toISOString()
       }));
       
