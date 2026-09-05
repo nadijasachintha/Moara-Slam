@@ -132,8 +132,14 @@ export default function ResultsTab() {
 
   const renderChampionsTable = () => {
     return (
-      <div className="glass-panel border border-white/5 rounded-3xl overflow-hidden mb-8">
-        <div className="bg-white/5 px-6 py-4 border-b border-white/5 flex items-center justify-between">
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: "easeOut" }}
+        className="glass-panel border border-amber-500/20 rounded-3xl overflow-hidden mb-8 shadow-[0_0_30px_rgba(245,158,11,0.05)] relative"
+      >
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full bg-gradient-to-b from-amber-500/5 to-transparent blur-3xl pointer-events-none" />
+        <div className="bg-white/5 px-6 py-4 border-b border-white/5 flex items-center justify-between relative z-10">
           <h3 className="text-sm font-extrabold text-white flex items-center gap-2 tracking-wider">
             <Trophy className="w-4 h-4 text-amber-500" /> Tournament Champions ({activeCategory})
           </h3>
@@ -141,14 +147,14 @@ export default function ResultsTab() {
             <button
               onClick={handleSaveChampions}
               disabled={savingChampions}
-              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors disabled:opacity-50"
+              className="flex items-center gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 px-4 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-colors shadow-lg disabled:opacity-50 hover:scale-105 active:scale-95 duration-200"
             >
               {savingChampions ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
               Save Champions
             </button>
           )}
         </div>
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto relative z-10">
           <table className="w-full text-left border-collapse min-w-[600px]">
             <thead>
               <tr className="bg-black/40 border-b border-white/5">
@@ -158,7 +164,7 @@ export default function ResultsTab() {
             </thead>
             <tbody className="divide-y divide-white/5 bg-black/20">
               {/* 1st Place */}
-              <tr className="hover:bg-white/5 transition-colors group">
+              <tr className="hover:bg-amber-500/5 transition-colors group animate-in fade-in slide-in-from-left-4 duration-500 fill-mode-both">
                 <td className="py-4 px-6 text-sm font-black text-amber-500 tracking-wider">
                   🥇 1st Place
                 </td>
@@ -167,18 +173,18 @@ export default function ResultsTab() {
                     <select
                       value={champForm.first}
                       onChange={e => setChampForm(prev => ({ ...prev, first: e.target.value }))}
-                      className="w-full max-w-md bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50"
+                      className="w-full max-w-md bg-black/40 border border-white/10 hover:border-amber-500/30 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500/50 transition-colors"
                     >
                       <option value="" className="text-slate-500">-- Select Team --</option>
                       {uniqueTeams.map(t => <option key={t.id} value={t.id} className="text-white bg-slate-900">{t.name} ({t.university?.name})</option>)}
                     </select>
                   ) : (
-                    <span className="text-sm font-bold text-white">{champ1st?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ1st?.university?.name || ''}</span></span>
+                    <span className="text-sm font-bold text-white group-hover:text-amber-400 transition-colors">{champ1st?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ1st?.university?.name || ''}</span></span>
                   )}
                 </td>
               </tr>
               {/* 2nd Place */}
-              <tr className="hover:bg-white/5 transition-colors group">
+              <tr className="hover:bg-slate-400/5 transition-colors group animate-in fade-in slide-in-from-left-4 duration-500 delay-75 fill-mode-both">
                 <td className="py-4 px-6 text-sm font-black text-slate-300 tracking-wider">
                   🥈 2nd Place
                 </td>
@@ -187,18 +193,18 @@ export default function ResultsTab() {
                     <select
                       value={champForm.second}
                       onChange={e => setChampForm(prev => ({ ...prev, second: e.target.value }))}
-                      className="w-full max-w-md bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-slate-400/50"
+                      className="w-full max-w-md bg-black/40 border border-white/10 hover:border-slate-400/30 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-slate-400/50 transition-colors"
                     >
                       <option value="" className="text-slate-500">-- Select Team --</option>
                       {uniqueTeams.map(t => <option key={t.id} value={t.id} className="text-white bg-slate-900">{t.name} ({t.university?.name})</option>)}
                     </select>
                   ) : (
-                    <span className="text-sm font-bold text-white">{champ2nd?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ2nd?.university?.name || ''}</span></span>
+                    <span className="text-sm font-bold text-white group-hover:text-slate-300 transition-colors">{champ2nd?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ2nd?.university?.name || ''}</span></span>
                   )}
                 </td>
               </tr>
               {/* 3rd Place */}
-              <tr className="hover:bg-white/5 transition-colors group">
+              <tr className="hover:bg-orange-500/5 transition-colors group animate-in fade-in slide-in-from-left-4 duration-500 delay-150 fill-mode-both">
                 <td className="py-4 px-6 text-sm font-black text-orange-400 tracking-wider">
                   🥉 3rd Place
                 </td>
@@ -207,20 +213,20 @@ export default function ResultsTab() {
                     <select
                       value={champForm.third}
                       onChange={e => setChampForm(prev => ({ ...prev, third: e.target.value }))}
-                      className="w-full max-w-md bg-black/40 border border-white/10 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50"
+                      className="w-full max-w-md bg-black/40 border border-white/10 hover:border-orange-500/30 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-orange-500/50 transition-colors"
                     >
                       <option value="" className="text-slate-500">-- Select Team --</option>
                       {uniqueTeams.map(t => <option key={t.id} value={t.id} className="text-white bg-slate-900">{t.name} ({t.university?.name})</option>)}
                     </select>
                   ) : (
-                    <span className="text-sm font-bold text-white">{champ3rd?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ3rd?.university?.name || ''}</span></span>
+                    <span className="text-sm font-bold text-white group-hover:text-orange-400 transition-colors">{champ3rd?.name || 'TBD'} <span className="text-slate-400 font-normal">{champ3rd?.university?.name || ''}</span></span>
                   )}
                 </td>
               </tr>
             </tbody>
           </table>
         </div>
-      </div>
+      </motion.div>
     );
   };
 
